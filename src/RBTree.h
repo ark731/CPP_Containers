@@ -1,3 +1,6 @@
+#ifndef S21_RBTREE
+#define S21_RBTREE
+
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -209,6 +212,7 @@ class RBTree {
   void erase(iterator pos);
   void swap(RBTree& other);
   void merge(RBTree& other);
+  void mergeNonUniq(RBTree& other);
   iterator find(const_reference key);
   iterator lower_bound(const_reference key);
   iterator upper_bound(const_reference key);
@@ -280,3 +284,5 @@ RBTree<T, Comparator>::insert(const value_type& value) {
 }
 
 }  // namespace s21
+
+#endif  // S21_RBTREE
