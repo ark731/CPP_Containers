@@ -150,6 +150,14 @@ class Map {
     auto it = tree_.upper_bound(value_type(key, T()));
     return it != tree_.end() ? it : end();
   }
+  const_iterator lower_bound(const key_type& key) const {
+    auto it = tree_.lower_bound(value_type(key, T()));
+    return it != tree_.end() ? it : const_iterator(end());
+  }
+  const_iterator upper_bound(const key_type& key) const {
+    auto it = tree_.upper_bound(value_type(key, T()));
+    return it != tree_.end() ? it : const_iterator(end());
+  }
   std::pair<iterator, iterator> equal_range(const key_type& key) {
     return {lower_bound(key), upper_bound(key)};
   }
