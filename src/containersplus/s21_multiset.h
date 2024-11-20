@@ -1,7 +1,7 @@
 #ifndef S21_MULTISET_H
 #define S21_MULTISET_H
 
-#include "s21_rbtree.h"
+#include "../RBTree/s21_rbtree.h"
 
 namespace s21 {
 template <typename Key, typename Comparator = std::less<Key>>
@@ -62,7 +62,9 @@ class Multiset {
           }(),
           ...);
     } catch (...) {
-      clear();
+      for (auto it : inserted_iterators) {
+        erase(it);
+      }
       throw;
     }
 
@@ -86,10 +88,7 @@ class Multiset {
   }
 
   // Lookup
-  iterator find(const key_type& key) const {
-    auto it = tree_.find(key);
-    return it != tree_.end() ? it : end();
-  }
+
   size_type count(const key_type& key) const {
     size_type count = 0;
     for (auto it = lower_bound(key); it != end() && *it == key; ++it) {
@@ -97,15 +96,44 @@ class Multiset {
     }
     return count;
   }
-  iterator lower_bound(const key_type& key) const {
+  // Const versions (already implemented)
+  const_iterator find(const key_type& key) const {
+    auto it = tree_.find(key);
+    return it != tree_.end() ? it : end();
+  }
+
+  const_iterator lower_bound(const key_type& key) const {
     auto it = tree_.lower_bound(key);
     return it != tree_.end() ? it : end();
   }
-  iterator upper_bound(const key_type& key) const {
+
+  const_iterator upper_bound(const key_type& key) const {
     auto it = tree_.upper_bound(key);
     return it != tree_.end() ? it : end();
   }
-  std::pair<iterator, iterator> equal_range(const key_type& key) const {
+
+  std::pair<const_iterator, const_iterator> equal_range(
+      const key_type& key) const {
+    return {lower_bound(key), upper_bound(key)};
+  }
+
+  // Non-const versions
+  iterator find(const key_type& key) {
+    auto it = tree_.find(key);
+    return it != tree_.end() ? it : end();
+  }
+
+  iterator lower_bound(const key_type& key) {
+    auto it = tree_.lower_bound(key);
+    return it != tree_.end() ? it : end();
+  }
+
+  iterator upper_bound(const key_type& key) {
+    auto it = tree_.upper_bound(key);
+    return it != tree_.end() ? it : end();
+  }
+
+  std::pair<iterator, iterator> equal_range(const key_type& key) {
     return {lower_bound(key), upper_bound(key)};
   }
 

@@ -1,7 +1,7 @@
 #ifndef S21_SET_H
 #define S21_SET_H
 
-#include "s21_rbtree.h"
+#include "../RBTree/s21_rbtree.h"
 
 namespace s21 {
 
@@ -9,21 +9,23 @@ template <typename Key, typename Comparator = std::less<Key>>
 class Set {
  public:
   using key_type = Key;
+  using value_type = key_type;
+  using key_compare = Comparator;
+  using value_compare = key_compare;
   using size_type = std::size_t;
   using difference_type = std::ptrdiff_t;
-  using key_compare = Comparator;
   using reference = key_type&;
   using const_reference = const key_type&;
-  using iterator = Iterator<key_type>;
-  using const_iterator = ConstIterator<key_type>;
+  using iterator = typename RBTree<value_type, key_compare>::iterator;
+  using const_iterator =
+      typename RBTree<value_type, key_compare>::const_iterator;
   using Node = RBTreeNode<key_type>;
 
   // Constructors and Destructor
-  Set() : comp_(), tree_(comp_) {}
-  explicit Set(const key_compare& comp) : comp_(comp), tree_(comp) {}
-  Set(const Set& other) : comp_(other.comp_), tree_(other.tree_) {}
-  Set(Set&& other) noexcept
-      : comp_(std::move(other.comp_)), tree_(std::move(other.tree_)) {}
+  Set() : tree_() {}
+  explicit Set(const key_compare& comp) : tree_(comp) {}
+  Set(const Set& other) : tree_(other.tree_) {}
+  Set(Set&& other) noexcept : tree_(std::move(other.tree_)) {}
   ~Set() = default;
 
   Set& operator=(Set other) noexcept {
@@ -60,6 +62,9 @@ class Set {
     try {
       (
           [&] {
+            // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
+            std::cout << "Inserting: " << std::forward<Args>(args) << std::endl;
+            // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
             auto [it, inserted] = insert(std::forward<Args>(args));
             result.push_back({it, inserted});
             if (inserted) {
@@ -93,31 +98,58 @@ class Set {
   }
 
   // Lookup
-  iterator find(const key_type& key) const {
-    auto it = tree_.find(key);
-    return it != tree_.end() ? it : end();
-  }
   size_type count(const key_type& key) const {
     return find(key) != end() ? 1 : 0;
   }
-  iterator lower_bound(const key_type& key) const {
+  // Const versions (already implemented)
+  const_iterator find(const key_type& key) const {
+    auto it = tree_.find(key);
+    return it != tree_.end() ? it : end();
+  }
+
+  const_iterator lower_bound(const key_type& key) const {
     auto it = tree_.lower_bound(key);
     return it != tree_.end() ? it : end();
   }
-  iterator upper_bound(const key_type& key) const {
+
+  const_iterator upper_bound(const key_type& key) const {
     auto it = tree_.upper_bound(key);
     return it != tree_.end() ? it : end();
   }
-  std::pair<iterator, iterator> equal_range(const key_type& key) const {
+
+  std::pair<const_iterator, const_iterator> equal_range(
+      const key_type& key) const {
+    return {lower_bound(key), upper_bound(key)};
+  }
+
+  // Non-const versions
+  iterator find(const key_type& key) {
+    auto it = tree_.find(key);
+    return it != tree_.end() ? it : end();
+  }
+
+  iterator lower_bound(const key_type& key) {
+    auto it = tree_.lower_bound(key);
+    return it != tree_.end() ? it : end();
+  }
+
+  iterator upper_bound(const key_type& key) {
+    auto it = tree_.upper_bound(key);
+    return it != tree_.end() ? it : end();
+  }
+
+  std::pair<iterator, iterator> equal_range(const key_type& key) {
     return {lower_bound(key), upper_bound(key)};
   }
 
   // Observers
-  key_compare key_comp() const { return comp_; }
+  Comparator key_comp() const { return comp_; }
+
+  void printTree() const { tree_.printTree(); }
 
  private:
-  key_compare comp_;
-  RBTree<key_type, key_compare> tree_;
+  Comparator comp_;
+  RBTree<key_type, Comparator> tree_;
 };
 
 }  // namespace s21

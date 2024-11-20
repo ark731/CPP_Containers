@@ -1,11 +1,14 @@
 #ifndef S21_RBTREE
 #define S21_RBTREE
 
+#include <iterator>
 #include <memory>
 #include <utility>
 
 namespace s21 {
 
+template <typename T, typename Comparator = std::less<T>>
+class RBTree;
 template <typename T>
 class ConstIterator;
 
@@ -43,6 +46,9 @@ class Iterator {
  public:
   using value_type = T;
   using reference = value_type&;
+  using pointer = value_type*;
+  using difference_type = std::ptrdiff_t;
+  using iterator_category = std::bidirectional_iterator_tag;
   using Node = RBTreeNode<value_type>;
 
   Iterator() = default;
@@ -51,8 +57,6 @@ class Iterator {
   Iterator(const Iterator& other) = default;
   Iterator(Iterator&& other) noexcept = default;
 
-  Node* getCurNode() const;
-  bool isValid() const;
   ConstIterator<T> toConstIterator() const {
     return ConstIterator<T>(current_node_, end_node_);
   }
@@ -67,6 +71,10 @@ class Iterator {
   Iterator& operator--();
   Iterator operator++(int);
   Iterator operator--(int);
+  Node* getCurNode() const;
+  Node* getMaxNode() const;
+  bool isValid() const;
+  reference getCurrentValue() const;
 
  protected:
   Node* current_node_ = nullptr;
@@ -81,8 +89,27 @@ typename Iterator<T>::Node* Iterator<T>::getCurNode() const {
 }
 
 template <typename T>
+typename Iterator<T>::Node* Iterator<T>::getMaxNode() const {
+  Node* node = current_node_;
+  if (node == nullptr) return end_node_;  // Handle null case
+  // Traverse to the rightmost node
+  while (node->right_ != end_node_ && node->right_ != nullptr) {
+    node = node->right_;
+  }
+  return node;
+}
+
+template <typename T>
 bool Iterator<T>::isValid() const {
   return current_node_ != nullptr;
+}
+
+template <typename T>
+typename Iterator<T>::reference Iterator<T>::getCurrentValue() const {
+  if (!current_node_) {
+    throw std::runtime_error("Dereferencing a null iterator");
+  }
+  return current_node_->value_;
 }
 
 template <typename T>
@@ -127,8 +154,12 @@ Iterator<T>& Iterator<T>::operator++() {
 
 template <typename T>
 Iterator<T>& Iterator<T>::operator--() {
+  if (current_node_ == nullptr) {
+    current_node_ = end_node_;
+    return *this;
+  }
   if (current_node_ == end_node_) {
-    current_node_ = find_max(root_);
+    current_node_ = getMaxNode();
     return *this;
   }
   if (current_node_->left_) {
@@ -173,7 +204,7 @@ class ConstIterator : public Iterator<T> {
  public:
   using value_type = T;
   using const_reference = const value_type&;
-  using Node = RBTreeNode<value_type>;
+  using Node = typename Iterator<T>::Node;
 
   ConstIterator() = default;
   ConstIterator(Node* cur, Node* end) : Iterator<T>(cur, end) {}
@@ -222,7 +253,7 @@ ConstIterator<T> ConstIterator<T>::prev() const {
 // -------- RED-BLACK TREE --------- //
 ///////////////////////////////////////
 
-template <typename T, typename Comparator = std::less<T>>
+template <typename T, typename Comparator>
 class RBTree {
  public:
   using value_type = T;
@@ -236,6 +267,8 @@ class RBTree {
   RBTree();
   RBTree(const RBTree& other);
   RBTree(RBTree&& other) noexcept;
+  explicit RBTree(const Comparator& comp);
+
   ~RBTree();
 
   RBTree& operator=(const RBTree& other);
@@ -261,16 +294,18 @@ class RBTree {
   std::pair<iterator, bool> insertNonUniq(const value_type& value);
 
   void erase(iterator pos);
-  void swap(RBTree& other);
+  void swap(RBTree& other) noexcept;
   void merge(RBTree& other);
   void mergeNonUniq(RBTree& other);
   iterator find(const_reference key);
   iterator lower_bound(const_reference key);
   iterator upper_bound(const_reference key);
+  const_iterator find(const_reference key) const;
+  const_iterator lower_bound(const_reference key) const;
+  const_iterator upper_bound(const_reference key) const;
   bool contains(const_reference key);
 
  private:
-  value_type& getCurrentValue() const;
   void swapNode(Node* fNode, Node* sNode);
   Node* copyTree(Node* otherNode, Node* parentNode);
   void deleteTree(Node* node);
@@ -295,11 +330,19 @@ RBTree<T, Comparator>::RBTree()
 template <typename T, typename Comparator>
 RBTree<T, Comparator>::RBTree(const RBTree& other)
     : root_(nullptr),
-      endNode_(new Node()),
+      endNode_(new Node()),  // Create a fresh endNode_
       size_(other.size_),
       comp_(other.comp_) {
   if (other.root_) {
     root_ = copyTree(other.root_, nullptr);
+
+    // Reconnect endNode_
+    Node* rightmost = root_;
+    while (rightmost && rightmost->right_) {
+      rightmost = rightmost->right_;
+    }
+    rightmost->right_ = endNode_;
+    endNode_->parent_ = rightmost;
   }
 }
 
@@ -310,9 +353,18 @@ RBTree<T, Comparator>::RBTree(RBTree&& other) noexcept
       size_(other.size_),
       comp_(std::move(other.comp_)) {
   other.root_ = nullptr;
-  other.endNode_ = nullptr;
+
+  other.endNode_ = new Node();
+  other.endNode_->parent_ = nullptr;
+  other.endNode_->left_ = nullptr;
+  other.endNode_->right_ = nullptr;
+
   other.size_ = 0;
 }
+
+template <typename T, typename Comparator>
+RBTree<T, Comparator>::RBTree(const Comparator& comp)
+    : root_(nullptr), endNode_(new Node()), size_(0), comp_(comp) {}
 
 template <typename T, typename Comparator>
 RBTree<T, Comparator>::~RBTree() {
@@ -320,17 +372,19 @@ RBTree<T, Comparator>::~RBTree() {
   delete endNode_;
 }
 
-// --- Copy/Move constructors
-
 template <typename T, typename Comparator>
 RBTree<T, Comparator>& RBTree<T, Comparator>::operator=(const RBTree& other) {
   if (this != &other) {
-    clear();  // Deep copy
+    clear();  // Free existing resources
     root_ = copyTree(other.root_, nullptr);
     size_ = other.size_;
-    endNode_ = new Node();
+    if (!endNode_) {
+      endNode_ = new Node();
+    }
     endNode_->parent_ = find_max(root_);
-    root_->parent_ = endNode_;
+    if (root_) {
+      endNode_->parent_->right_ = endNode_;
+    }
   }
   return *this;
 }
@@ -339,13 +393,14 @@ template <typename T, typename Comparator>
 RBTree<T, Comparator>& RBTree<T, Comparator>::operator=(
     RBTree&& other) noexcept {
   if (this != &other) {
-    clear();  // Transfer ownership
+    clear();
     root_ = other.root_;
     endNode_ = other.endNode_;
     size_ = other.size_;
+    comp_ = std::move(other.comp_);
     other.root_ = nullptr;
-    other.endNode_ = nullptr;
     other.size_ = 0;
+    other.endNode_ = new Node();
   }
   return *this;
 }
@@ -377,38 +432,32 @@ template <typename T, typename Comparator>
 typename RBTree<T, Comparator>::iterator RBTree<T, Comparator>::find(
     const_reference key) {
   Node* current = root_;
-  while (current != nullptr) {
+  while (current != endNode_ && current != nullptr) {
     if (comp_(key, current->value_)) {
       current = current->left_;
     } else if (comp_(current->value_, key)) {
       current = current->right_;
     } else {
-      return iterator(current, endNode_);  // Key found
+      return iterator(current, endNode_);
     }
   }
-  return end();  // Key not found
+  return end();
 }
 
 template <typename T, typename Comparator>
-typename RBTree<T, Comparator>::Node* RBTree<T, Comparator>::find_min(
-    Node* root) const {
-  if (root == nullptr) return endNode_;
-  // Traverse to leftmost node.
-  while (root->left_ != nullptr) {
-    root = root->left_;
+typename RBTree<T, Comparator>::const_iterator RBTree<T, Comparator>::find(
+    const_reference key) const {
+  Node* current = root_;
+  while (current != endNode_ && current != nullptr) {
+    if (comp_(key, current->value_)) {
+      current = current->left_;
+    } else if (comp_(current->value_, key)) {
+      current = current->right_;
+    } else {
+      return const_iterator(current, endNode_);
+    }
   }
-  return root;
-}
-
-template <typename T, typename Comparator>
-typename RBTree<T, Comparator>::Node* RBTree<T, Comparator>::find_max(
-    Node* root) const {
-  if (root == nullptr) return endNode_;
-  // Traverse to rightmost node.
-  while (root->right_ != nullptr) {
-    root = root->right_;
-  }
-  return root;
+  return end();
 }
 
 template <typename T, typename Comparator>
@@ -416,12 +465,12 @@ typename RBTree<T, Comparator>::iterator RBTree<T, Comparator>::lower_bound(
     const_reference key) {
   Node* current = root_;
   Node* result = nullptr;
-  while (current != nullptr) {
-    if (!comp_(current->value_, key)) {  // `current->value_ >= key`
+  while (current != endNode_ && current != nullptr) {
+    if (!comp_(current->value_, key)) {
       result = current;
-      current = current->left_;  // Move left to find smaller
+      current = current->left_;
     } else {
-      current = current->right_;  // Move right to find larger
+      current = current->right_;
     }
   }
   return result ? iterator(result, endNode_) : end();
@@ -432,8 +481,8 @@ typename RBTree<T, Comparator>::iterator RBTree<T, Comparator>::upper_bound(
     const_reference key) {
   Node* current = root_;
   Node* result = nullptr;
-  while (current != nullptr) {
-    if (comp_(key, current->value_)) {  // `current->value_ > key`
+  while (current != endNode_ && current != nullptr) {
+    if (comp_(key, current->value_)) {
       result = current;
       current = current->left_;
     } else {
@@ -441,6 +490,38 @@ typename RBTree<T, Comparator>::iterator RBTree<T, Comparator>::upper_bound(
     }
   }
   return result ? iterator(result, endNode_) : end();
+}
+
+template <typename T, typename Comparator>
+typename RBTree<T, Comparator>::const_iterator
+RBTree<T, Comparator>::lower_bound(const_reference key) const {
+  Node* current = root_;
+  Node* result = nullptr;
+  while (current != endNode_ && current != nullptr) {
+    if (!comp_(current->value_, key)) {
+      result = current;
+      current = current->left_;
+    } else {
+      current = current->right_;
+    }
+  }
+  return result ? const_iterator(result, endNode_) : end();
+}
+
+template <typename T, typename Comparator>
+typename RBTree<T, Comparator>::const_iterator
+RBTree<T, Comparator>::upper_bound(const_reference key) const {
+  Node* current = root_;
+  Node* result = nullptr;
+  while (current != endNode_ && current != nullptr) {
+    if (comp_(key, current->value_)) {
+      result = current;
+      current = current->left_;
+    } else {
+      current = current->right_;
+    }
+  }
+  return result ? const_iterator(result, endNode_) : end();
 }
 
 template <typename T, typename Comparator>
@@ -466,11 +547,24 @@ typename RBTree<T, Comparator>::const_iterator RBTree<T, Comparator>::end()
 }
 
 template <typename T, typename Comparator>
-void RBTree<T, Comparator>::swap(RBTree& other) {
+void RBTree<T, Comparator>::swap(RBTree& other) noexcept {
+  if (this == &other) return;
   std::swap(root_, other.root_);
   std::swap(endNode_, other.endNode_);
   std::swap(size_, other.size_);
   std::swap(comp_, other.comp_);
+  if (root_) {
+    endNode_->parent_ = find_max(root_);
+    endNode_->parent_->right_ = endNode_;
+  } else {
+    endNode_->parent_ = nullptr;
+  }
+  if (other.root_) {
+    other.endNode_->parent_ = find_max(other.root_);
+    other.endNode_->parent_->right_ = other.endNode_;
+  } else {
+    other.endNode_->parent_ = nullptr;
+  }
 }
 
 template <typename T, typename Comparator>
@@ -509,85 +603,86 @@ RBTree<T, Comparator>::insert(const value_type& value) {
   Node* newNode = new Node(value);  // Create new node with value
 
   if (root_ == nullptr) {
-    root_ = newNode;  // If tree is empty, new node becomes root
+    root_ = newNode;              // If tree is empty, new node becomes root
+    root_->parent_ = endNode_;    // Connect root to sentinel
+    endNode_->parent_ = newNode;  // Set endNode to point to new root
   } else {
     Node* node = root_;
-    while (true) {
+    while (node != endNode_) {
       if (comp_(value, node->value_)) {
-        if (node->left_ == nullptr) {
+        if (node->left_ == nullptr || node->left_ == endNode_) {
           node->left_ = newNode;
           newNode->parent_ = node;
           break;
-        } else {
-          node = node->left_;
         }
+        node = node->left_;
       } else if (comp_(node->value_, value)) {
-        if (node->right_ == nullptr) {
+        if (node->right_ == nullptr || node->right_ == endNode_) {
           node->right_ = newNode;
           newNode->parent_ = node;
           break;
-        } else {
-          node = node->right_;
         }
+        node = node->right_;
       } else {
         delete newNode;  // Value already exists, no insertion
         return std::make_pair(iterator(node, endNode_), false);
       }
+    }
+    if (comp_(endNode_->parent_->value_, newNode->value_)) {
+      endNode_->parent_ = newNode;
     }
   }
 
   fixInsert(newNode);
 
   ++size_;
-  root_->parent_ = endNode_;            // Set parent to sentinel
-  endNode_->parent_ = find_max(root_);  // Set parent of endNode to  max element
   return std::make_pair(iterator(newNode, endNode_), true);
 }
 
 template <typename T, typename Comparator>
 std::pair<typename RBTree<T, Comparator>::iterator, bool>
 RBTree<T, Comparator>::insertNonUniq(const value_type& value) {
-  Node* newNode = new Node(value);  // Create new node with value
+  Node* newNode = new Node(value);
   if (root_ == nullptr) {
-    // If tree is empty, make newNode root
     root_ = newNode;
+    root_->parent_ = endNode_;    // Connect root to sentinel
+    endNode_->parent_ = newNode;  // Set endNode to point to new root
   } else {
     Node* node = root_;
-    while (true) {
+    while (node != endNode_) {
       if (comp_(value, node->value_)) {
-        if (node->left_ == nullptr) {
+        if (node->left_ == nullptr || node->left_ == endNode_) {
           node->left_ = newNode;
           newNode->parent_ = node;
           break;
-        } else {
-          node = node->left_;
         }
+        node = node->left_;
       } else {
-        if (node->right_ == nullptr) {
+        if (node->right_ == nullptr || node->right_ == endNode_) {
           node->right_ = newNode;
           newNode->parent_ = node;
           break;
-        } else {
-          node = node->right_;
         }
+        node = node->right_;
       }
+    }
+    if (comp_(endNode_->parent_->value_, newNode->value_)) {
+      endNode_->parent_ = newNode;
     }
   }
 
-  fixInsert(newNode);
-
+  fixInsert(newNode);  // Rebalance the tree
   ++size_;
-  root_->parent_ = endNode_;
   return std::make_pair(iterator(newNode, endNode_), true);
 }
 
 template <typename T, typename Comparator>
 void RBTree<T, Comparator>::fixInsert(Node* node) {
-  while (node != root_ && node->parent_->isRed()) {
+  while (node != root_ && node->parent_ != endNode_ && node->parent_->isRed()) {
     if (node->parent_ == node->parent_->parent_->left_) {
       // If parent is left child of grandparent
       Node* uncle = node->parent_->parent_->right_;
-      if (uncle && uncle->isRed()) {
+      if (uncle && uncle != endNode_ && uncle->isRed()) {
         // Case 1: Uncle is red, recolor and move up
         node->parent_->color_ = Color::BLACK;
         uncle->color_ = Color::BLACK;
@@ -608,7 +703,7 @@ void RBTree<T, Comparator>::fixInsert(Node* node) {
     } else {
       // mirror of the above case
       Node* uncle = node->parent_->parent_->left_;
-      if (uncle && uncle->isRed()) {
+      if (uncle && uncle != endNode_ && uncle->isRed()) {
         // Case 1:
         node->parent_->color_ = Color::BLACK;
         uncle->color_ = Color::BLACK;
@@ -629,12 +724,17 @@ void RBTree<T, Comparator>::fixInsert(Node* node) {
     }
   }
   root_->color_ = Color::BLACK;  // Root is always black!
+  if (endNode_->parent_ != nullptr && endNode_->parent_ != root_) {
+    endNode_->parent_ = find_max(root_);
+  }
 }
 
 template <typename T, typename Comparator>
 void RBTree<T, Comparator>::erase(iterator pos) {
   if (!pos.isValid()) {
-    throw std::runtime_error("Trying to erase an invalid iterator.");
+    throw std::runtime_error(
+        "Trying to erase an invalid iterator: Iterator does not point to a "
+        "valid node.");
   }
 
   Node* nodeToDelete = pos.getCurNode();
@@ -716,14 +816,16 @@ void RBTree<T, Comparator>::fixErase(Node* node) {
         sibling = node->parent_->right_;
       }
 
-      if (sibling->left_ == nullptr || sibling->left_->color_ == Color::BLACK) {
-        if (sibling->right_ == nullptr ||
+      if (sibling->left_ == nullptr || sibling->left_ == endNode_ ||
+          sibling->left_->color_ == Color::BLACK) {
+        if (sibling->right_ == nullptr || sibling->right_ == endNode_ ||
             sibling->right_->color_ == Color::BLACK) {
           // Case 2: Both of sibling's children are black or null
           sibling->color_ = Color::RED;
           node = node->parent_;
         } else {
-          if (sibling->right_->color_ == Color::BLACK) {
+          if (sibling->right_ == nullptr || sibling->right_ == endNode_ ||
+              sibling->right_->color_ == Color::BLACK) {
             // Case 3: Sibling's left child is red, right is black
             sibling->left_->color_ = Color::BLACK;
             sibling->color_ = Color::RED;
@@ -733,7 +835,7 @@ void RBTree<T, Comparator>::fixErase(Node* node) {
           // Case 4: Sibling's right child is red
           sibling->color_ = node->parent_->color_;
           node->parent_->color_ = Color::BLACK;
-          if (sibling->right_ != nullptr) {
+          if (sibling->right_ != endNode_ && sibling->right_ != nullptr) {
             sibling->right_->color_ = Color::BLACK;
           }
           leftRotate(node->parent_);
@@ -743,7 +845,7 @@ void RBTree<T, Comparator>::fixErase(Node* node) {
         // Case 5: Sibling's left child is red
         sibling->color_ = node->parent_->color_;
         node->parent_->color_ = Color::BLACK;
-        if (sibling->left_ != nullptr) {
+        if (sibling->left_ != nullptr && sibling->left_ != endNode_) {
           sibling->left_->color_ = Color::BLACK;
         }
         leftRotate(node->parent_);
@@ -761,9 +863,9 @@ void RBTree<T, Comparator>::fixErase(Node* node) {
         sibling = node->parent_->left_;
       }
 
-      if (sibling->right_ == nullptr ||
+      if (sibling->right_ == nullptr || sibling->right_ == endNode_ ||
           sibling->right_->color_ == Color::BLACK) {
-        if (sibling->left_ == nullptr ||
+        if (sibling->left_ == nullptr || sibling->left_ == endNode_ ||
             sibling->left_->color_ == Color::BLACK) {
           // Case 2:
           sibling->color_ = Color::RED;
@@ -780,7 +882,7 @@ void RBTree<T, Comparator>::fixErase(Node* node) {
           // Case 4:
           sibling->color_ = node->parent_->color_;
           node->parent_->color_ = Color::BLACK;
-          if (sibling->left_ != nullptr) {
+          if (sibling->left_ != nullptr && sibling->left_ != endNode_) {
             sibling->left_->color_ = Color::BLACK;
           }
           rightRotate(node->parent_);
@@ -790,7 +892,7 @@ void RBTree<T, Comparator>::fixErase(Node* node) {
         // Case 5:
         sibling->color_ = node->parent_->color_;
         node->parent_->color_ = Color::BLACK;
-        if (sibling->right_ != nullptr) {
+        if (sibling->right_ != nullptr && sibling->right_ != endNode_) {
           sibling->right_->color_ = Color::BLACK;
         }
         rightRotate(node->parent_);
@@ -799,7 +901,15 @@ void RBTree<T, Comparator>::fixErase(Node* node) {
     }
 
     if (node != nullptr && node == endNode_) {
-      node->parent_ = find_max(root_);
+      // Find the new maximum node after deletion
+      Node* newMaxNode = find_max(root_);
+      if (newMaxNode != nullptr) {
+        // Adjust endNode's parent to point to the new maximum node
+        endNode_->parent_ = newMaxNode;
+      } else {
+        // If the tree is empty, reset endNode to nullptr
+        endNode_->parent_ = nullptr;
+      }
     }
   }
 
@@ -848,9 +958,14 @@ void RBTree<T, Comparator>::rightRotate(Node* node) {
 
 template <typename T, typename Comparator>
 void RBTree<T, Comparator>::clear() {
-  deleteTree(root_);
-  root_ = nullptr;
+  if (root_) {
+    deleteTree(root_);
+    root_ = nullptr;
+  }
+  // Reset end node to initial state
   endNode_->parent_ = nullptr;
+  endNode_->left_ = nullptr;
+  endNode_->right_ = nullptr;
   size_ = 0;
 }
 
@@ -859,24 +974,44 @@ void RBTree<T, Comparator>::printTree() const {
   printTree(root_, 0);
 }
 
-// --- Private
+// --- Private ---
 
 template <typename T, typename Comparator>
-typename RBTree<T, Comparator>::value_type&
-RBTree<T, Comparator>::getCurrentValue() const {
-  if (!current_node_) {
-    throw std::runtime_error("Dereferencing a null iterator");
+typename RBTree<T, Comparator>::Node* RBTree<T, Comparator>::find_min(
+    Node* root) const {
+  if (root == nullptr) return endNode_;
+  // Traverse to leftmost node.
+  while (root->left_ != nullptr) {
+    root = root->left_;
   }
-  return current_node_->value_;
+  return root;
+}
+
+template <typename T, typename Comparator>
+typename RBTree<T, Comparator>::Node* RBTree<T, Comparator>::find_max(
+    Node* root) const {
+  if (root == nullptr) return endNode_;
+  // Traverse to rightmost node.
+  while (root->right_ != endNode_ && root->right_ != nullptr) {
+    root = root->right_;
+  }
+  return root;
 }
 
 template <typename T, typename Comparator>
 typename RBTree<T, Comparator>::Node* RBTree<T, Comparator>::copyTree(
     Node* otherNode, Node* parentNode) {
-  if (!otherNode) return nullptr;
-  Node* newNode = new Node(otherNode->value_, parentNode, otherNode->color_);
-  newNode->left_ = copyTree(otherNode->left_, newNode);
-  newNode->right_ = copyTree(otherNode->right_, newNode);
+  if (!otherNode || otherNode == this->endNode_) return nullptr;
+
+  Node* newNode = nullptr;
+  try {
+    newNode = new Node(otherNode->value_, parentNode, otherNode->color_);
+    newNode->left_ = copyTree(otherNode->left_, newNode);
+    newNode->right_ = copyTree(otherNode->right_, newNode);
+  } catch (...) {
+    deleteTree(newNode);
+    throw;
+  }
 
   return newNode;
 }
@@ -884,6 +1019,11 @@ typename RBTree<T, Comparator>::Node* RBTree<T, Comparator>::copyTree(
 template <typename T, typename Comparator>
 void RBTree<T, Comparator>::swapNode(Node* fNode, Node* sNode) {
   if (!fNode || !sNode) return;
+  if (fNode == endNode_ || sNode == endNode_) {
+    if (fNode == endNode_) std::swap(fNode, sNode);
+    std::swap(fNode->value_, sNode->value_);
+    return;
+  }
   std::swap(fNode->value_, sNode->value_);
   std::swap(fNode->color_, sNode->color_);
   if (fNode->parent_ == sNode) {
@@ -918,7 +1058,7 @@ void RBTree<T, Comparator>::swapNode(Node* fNode, Node* sNode) {
 
 template <typename T, typename Comparator>
 void RBTree<T, Comparator>::deleteTree(Node* node) {
-  if (node) {
+  if (node && node != endNode_) {  // Skip endNode_
     deleteTree(node->left_);
     deleteTree(node->right_);
     delete node;
