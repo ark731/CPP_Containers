@@ -78,6 +78,10 @@ class Set {
       }
       throw;
     }
+    // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
+    std::cout << "Tree structure after inserting:\n";
+    printTree();
+    // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
 
     return result;
   }

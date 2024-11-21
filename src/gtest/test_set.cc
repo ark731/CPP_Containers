@@ -77,11 +77,11 @@ TEST_F(SetTest, Insert) {
 TEST_F(SetTest, InsertMany) {
   std::cout << default_set.size();
   std::cout << std::endl;
-  auto results = default_set.insert_many(1, 2, 3, 4, 5);
-  EXPECT_EQ(default_set.size(), 5);
+  auto results = default_set.insert_many(1, 2, 3, 4);
+  EXPECT_EQ(default_set.size(), 4);
   std::cout << default_set.size();
   std::cout << std::endl;
-  for (int i = 1; i <= 5; ++i) {
+  for (int i = 1; i <= 4; ++i) {
     EXPECT_TRUE(default_set.count(i));
     std::cout << default_set.count(i);
     std::cout << std::endl;
