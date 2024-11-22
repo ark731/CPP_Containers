@@ -75,84 +75,322 @@ TEST_F(SetTest, Insert) {
 
 // Test insert_many method
 TEST_F(SetTest, InsertMany) {
-  std::cout << default_set.size();
-  std::cout << std::endl;
-  auto results = default_set.insert_many(1, 2, 3, 4);
-  EXPECT_EQ(default_set.size(), 4);
-  std::cout << default_set.size();
-  std::cout << std::endl;
-  for (int i = 1; i <= 4; ++i) {
+  auto results = default_set.insert_many(1, 2, 3, 4, 5, 6, 7, 8);
+  EXPECT_EQ(default_set.size(), 8);
+  for (int i = 1; i <= 8; ++i) {
     EXPECT_TRUE(default_set.count(i));
-    std::cout << default_set.count(i);
-    std::cout << std::endl;
-    default_set.printTree();
   }
 }
 
-// // Test erase method
-// TEST_F(SetTest, Erase) {
-//   default_set.insert(10);
-//   default_set.insert(20);
+// Test insert_many method
+TEST_F(SetTest, InsertMany2) {
+  default_set.insert(10);
+  default_set.insert(20);
+  default_set.insert_many(1, 2, 3, 4, 5, 6, 7, 8);
+  EXPECT_EQ(default_set.size(), 10);
+  for (int i = 1; i <= 8; ++i) {
+    EXPECT_TRUE(default_set.count(i));
+  }
+  default_set.insert_many(10, 20, 30, 40, 50);
+  EXPECT_EQ(default_set.size(), 13);
+  for (int i = 10; i <= 50; i += 10) {
+    EXPECT_TRUE(default_set.count(i));
+  }
+}
 
-//   auto it = default_set.find(10);
-//   default_set.erase(it);
+// Test insert_many method
+TEST_F(SetTest, InsertMany3) {
+  default_set.insert(10);
+  default_set.insert(20);
+  default_set.insert_many(17, 23, 3, 4, 5, 6, 17, 8);
+  default_set.insert_many(10, 20, 1, 30, 40, 50);
+  default_set.insert_many(423, 9, 16, 150, 11, 32, 2, 33, 7);
+  EXPECT_EQ(default_set.size(), 22);
+}
 
-//   EXPECT_EQ(default_set.size(), 1);
-//   EXPECT_FALSE(default_set.count(10));
-//   EXPECT_TRUE(default_set.count(20));
+// Test erase method
+TEST_F(SetTest, Erase) {
+  default_set.insert(10);
+  default_set.insert(20);
 
-//   // Erase non-existent element
-//   size_t erase_result = default_set.erase(30);
-//   EXPECT_EQ(erase_result, 0);  // No elements were erased
-// }
+  auto it = default_set.find(10);
+  default_set.erase(it);
 
-// // Test clear method
-// TEST_F(SetTest, Clear) {
-//   default_set.insert(10);
-//   default_set.insert(20);
+  EXPECT_EQ(default_set.size(), 1);
+  EXPECT_FALSE(default_set.count(10));
+  EXPECT_TRUE(default_set.count(20));
 
-//   default_set.clear();
+  // Erase non-existent element
+  size_t erase_result = default_set.erase(30);
+  EXPECT_EQ(erase_result, 0);  // No elements were erased
+}
 
-//   EXPECT_TRUE(default_set.empty());
-//   EXPECT_EQ(default_set.size(), 0);
-// }
+// Test erase method
+TEST_F(SetTest, Erase2) {
+  default_set.insert(10);
+  default_set.insert(20);
+  default_set.insert_many(1, 2, 3, 4, 5, 6, 7, 8);
+  EXPECT_EQ(default_set.size(), 10);
+  for (int i = 1; i <= 8; ++i) {
+    EXPECT_TRUE(default_set.count(i));
+  }
+  default_set.insert_many(10, 20, 30, 40, 50);
+  for (int i = 1; i <= 8; ++i) {
+    EXPECT_TRUE(default_set.count(i));
+  }
 
-// // Test custom comparator: std::greater<int>
-// TEST_F(SetTest, CustomComparatorOrder) {
-//   custom_comp_set.insert(10);
-//   custom_comp_set.insert(20);
-//   custom_comp_set.insert(30);
+  auto it = default_set.find(10);
+  default_set.erase(it);
 
-//   // The expected order should be 30, 20, 10 for std::greater<int>
-//   auto it = custom_comp_set.begin();
-//   EXPECT_EQ(*it, 30);
+  it = default_set.find(6);
+  default_set.erase(it);
 
-//   it = std::next(it);
-//   EXPECT_EQ(*it, 20);
+  EXPECT_FALSE(default_set.count(10));
+  EXPECT_FALSE(default_set.count(6));
 
-//   it = std::next(it);
-//   EXPECT_EQ(*it, 10);
-// }
+  // Erase non-existent element
+  size_t erase_result = default_set.erase(300);
+  EXPECT_EQ(erase_result, 0);  // No elements were erased
+}
 
-// // Test iterators: begin and end
-// TEST_F(SetTest, Iterators) {
-//   default_set.insert(10);
-//   default_set.insert(20);
-//   default_set.insert(30);
+// Test clear method
+TEST_F(SetTest, Clear) {
+  default_set.insert(10);
+  default_set.insert(20);
 
-//   auto it = default_set.begin();
-//   EXPECT_EQ(*it, 10);  // Should be the smallest element
+  default_set.clear();
 
-//   it = std::next(it);
-//   EXPECT_EQ(*it, 20);
+  EXPECT_TRUE(default_set.empty());
+  EXPECT_EQ(default_set.size(), 0);
+}
 
-//   it = std::next(it);
-//   EXPECT_EQ(*it, 30);
+// Test custom comparator: std::greater<int>
+TEST_F(SetTest, CustomComparatorOrder) {
+  custom_comp_set.insert(10);
+  custom_comp_set.insert(20);
+  custom_comp_set.insert(30);
 
-//   // Make sure next is handled correctly at the end of the container
-//   it = std::next(it);
-//   EXPECT_EQ(it, default_set.end());  // After last element, next should be
-//   end()
-// }
+  // The expected order should be 30, 20, 10 for std::greater<int>
+  auto it = custom_comp_set.begin();
+  EXPECT_EQ(*it, 30);
+
+  it = std::next(it);
+  EXPECT_EQ(*it, 20);
+
+  it = std::next(it);
+  EXPECT_EQ(*it, 10);
+}
+
+// Test iterators: begin and end
+TEST_F(SetTest, Iterators) {
+  default_set.insert(10);
+  default_set.insert(20);
+  default_set.insert(30);
+
+  auto it = default_set.begin();
+  EXPECT_EQ(*it, 10);  // Should be the smallest element
+
+  it = std::next(it);
+  EXPECT_EQ(*it, 20);
+
+  it = std::next(it);
+  EXPECT_EQ(*it, 30);
+
+  // Make sure next is handled correctly at the end of the container
+  it = std::next(it);
+  EXPECT_EQ(it, default_set.end());  // After last element, next should be end()
+}
+
+TEST_F(SetTest, StressTestInsert) {
+  for (int i = 0; i < 100000; ++i) {
+    default_set.insert(i);
+  }
+  EXPECT_EQ(default_set.size(), 100000);
+}
+
+TEST_F(SetTest, StressTestErase) {
+  for (int i = 0; i < 100000; ++i) {
+    default_set.insert(i);
+  }
+  for (int i = 0; i < 50000; ++i) {
+    auto it = default_set.find(i);
+    default_set.erase(it);
+  }
+  EXPECT_EQ(default_set.size(), 50000);
+}
+
+TEST_F(SetTest, ComparatorRespected) {
+  custom_comp_set.insert(5);
+  custom_comp_set.insert(1);
+  custom_comp_set.insert(10);
+
+  auto it = custom_comp_set.begin();
+  EXPECT_EQ(*it, 10);  // std::greater orders in descending
+  ++it;
+  EXPECT_EQ(*it, 5);
+  ++it;
+  EXPECT_EQ(*it, 1);
+}
+
+TEST_F(SetTest, Merge) {
+  default_set.insert(1);
+  default_set.insert(2);
+
+  Set<int> other_set;
+  other_set.insert(3);
+  other_set.insert(1);  // Duplicate
+
+  default_set.merge(other_set);
+
+  EXPECT_EQ(default_set.size(), 3);
+  EXPECT_TRUE(default_set.count(1));
+  EXPECT_TRUE(default_set.count(2));
+  EXPECT_TRUE(default_set.count(3));
+}
+
+TEST_F(SetTest, BasicMerge) {
+  default_set.insert(1);
+  default_set.insert(2);
+
+  Set<int> other_set;
+  other_set.insert(3);
+  other_set.insert(4);
+
+  default_set.merge(other_set);
+
+  EXPECT_EQ(default_set.size(), 4);
+  EXPECT_TRUE(default_set.count(1));
+  EXPECT_TRUE(default_set.count(2));
+  EXPECT_TRUE(default_set.count(3));
+  EXPECT_TRUE(default_set.count(4));
+  EXPECT_TRUE(other_set.empty());  // Other set should be empty after merge
+}
+
+TEST_F(SetTest, MergeWithDuplicates) {
+  default_set.insert(1);
+  default_set.insert(2);
+
+  Set<int> other_set;
+  other_set.insert(2);
+  other_set.insert(3);
+
+  default_set.merge(other_set);
+
+  EXPECT_EQ(default_set.size(), 3);
+  EXPECT_TRUE(default_set.count(1));
+  EXPECT_TRUE(default_set.count(2));
+  EXPECT_TRUE(default_set.count(3));
+  EXPECT_TRUE(other_set.empty());  // Other set should be empty after merge
+}
+
+TEST_F(SetTest, SelfMerge) {
+  default_set.insert(1);
+  default_set.insert(2);
+
+  default_set.merge(default_set);
+
+  EXPECT_EQ(default_set.size(), 2);
+  EXPECT_TRUE(default_set.count(1));
+  EXPECT_TRUE(default_set.count(2));
+}
+
+TEST_F(SetTest, MergeIntoEmptySet) {
+  Set<int> other_set;
+  other_set.insert(1);
+  other_set.insert(2);
+
+  default_set.merge(other_set);
+
+  EXPECT_EQ(default_set.size(), 2);
+  EXPECT_TRUE(default_set.count(1));
+  EXPECT_TRUE(default_set.count(2));
+  EXPECT_TRUE(other_set.empty());
+}
+
+TEST_F(SetTest, ReverseIteration) {
+  default_set.insert(1);
+  default_set.insert(2);
+  default_set.insert(3);
+
+  default_set.printTree();  ////////////////  DELETE
+
+  auto it = default_set.end();
+  --it;
+  EXPECT_EQ(*it, 3);
+
+  --it;
+  EXPECT_EQ(*it, 2);
+
+  --it;
+  EXPECT_EQ(*it, 1);
+}
+
+TEST_F(SetTest, SingleElement) {
+  default_set.insert(42);
+  EXPECT_EQ(default_set.size(), 1);
+  EXPECT_EQ(*default_set.begin(), 42);
+}
+
+TEST_F(SetTest, EmptyFind) {
+  EXPECT_EQ(default_set.find(10), default_set.end());
+}
+
+struct FailingComparator {
+  bool operator()(int lhs, int rhs) const {
+    if (lhs == 42 || rhs == 42) throw std::runtime_error("Comparator failure");
+    return lhs < rhs;
+  }
+};
+
+TEST(SetInsert, ExceptionDuringComparator) {
+  s21::Set<int, FailingComparator> set;
+
+  // Insert elements that won't cause exceptions
+  EXPECT_NO_THROW(set.insert(10));
+  EXPECT_NO_THROW(set.insert(20));
+
+  // Attempt to insert an element causing the comparator to throw
+  EXPECT_THROW(set.insert(42), std::runtime_error);
+
+  // Ensure the set remains consistent
+  EXPECT_EQ(set.size(), 2);
+  EXPECT_TRUE(set.count(10));
+  EXPECT_TRUE(set.count(20));
+}
+
+TEST(SetInsertMany, ExceptionDuringInsertMany) {
+  s21::Set<int, FailingComparator> set;
+
+  // Attempt to insert a range of values where one will throw
+  EXPECT_THROW(set.insert_many(1, 2, 42, 3, 4), std::runtime_error);
+
+  // Ensure no partial insertion occurred
+  EXPECT_TRUE(set.empty());
+}
+
+struct FailingKey {
+  int value;
+
+  FailingKey() : value(0) {}  // Default constructor
+  FailingKey(int v) : value(v) {
+    if (v == 42) throw std::runtime_error("Key construction failure");
+  }
+
+  bool operator<(const FailingKey& other) const { return value < other.value; }
+};
+
+TEST(SetInsert, ExceptionDuringKeyConstruction) {
+  s21::Set<FailingKey> set;
+
+  // Insert elements that won't throw
+  EXPECT_NO_THROW(set.insert(FailingKey(10)));
+  EXPECT_NO_THROW(set.insert(FailingKey(20)));
+
+  // Attempt to insert an element causing key construction to throw
+  EXPECT_THROW(set.insert(FailingKey(42)), std::runtime_error);
+
+  // Ensure the set remains consistent
+  EXPECT_EQ(set.size(), 2);
+}
 
 }  // namespace s21

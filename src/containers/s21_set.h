@@ -46,7 +46,19 @@ class Set {
 
   // Modifiers
   std::pair<iterator, bool> insert(const key_type& key) {
-    return tree_.insert(key);
+    std::vector<iterator> rollback_nodes;
+    try {
+      auto [it, inserted] = tree_.insert(key);
+      if (inserted) {
+        rollback_nodes.push_back(it);
+      }
+      return {it, inserted};
+    } catch (...) {
+      for (auto it : rollback_nodes) {
+        erase(it);
+      }
+      throw;
+    }
   }
 
   template <typename... Args>
@@ -62,9 +74,10 @@ class Set {
     try {
       (
           [&] {
-            // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-            std::cout << "Inserting: " << std::forward<Args>(args) << std::endl;
-            // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
+            // // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
+            // std::cout << "Inserting: " << std::forward<Args>(args) <<
+            // std::endl;
+            // // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
             auto [it, inserted] = insert(std::forward<Args>(args));
             result.push_back({it, inserted});
             if (inserted) {
@@ -78,12 +91,17 @@ class Set {
       }
       throw;
     }
-    // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-    std::cout << "Tree structure after inserting:\n";
-    printTree();
-    // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
+    // // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
+    // std::cout << "Tree structure after inserting:\n";
+    // printTree();
+    // // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
 
     return result;
+  }
+
+  void merge(Set& other) {
+    if (this == &other) return;  // Protect against self-merge
+    tree_.merge(other.tree_);
   }
 
   void erase(iterator pos) { tree_.erase(pos); }
