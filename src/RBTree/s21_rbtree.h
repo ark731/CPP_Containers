@@ -732,41 +732,78 @@ void RBTree<T, Comparator>::mergeNonUniq(RBTree& other) {
 //   return std::make_pair(iterator(newNode, endNode_), true);
 // }
 
+// template <typename T, typename Comparator>
+// std::pair<typename RBTree<T, Comparator>::iterator, bool>
+// RBTree<T, Comparator>::insertNonUniq(const value_type& value) {
+//   Node* newNode = new Node(value);
+//   if (root_ == nullptr) {
+//     root_ = newNode;
+//     root_->parent_ = endNode_;    // Connect root to sentinel
+//     endNode_->parent_ = newNode;  // Set endNode to point to new root
+//   } else {
+//     Node* node = root_;
+//     while (node != endNode_) {
+//       if (comp_(value, node->value_)) {
+//         if (node->left_ == nullptr || node->left_ == endNode_) {
+//           node->left_ = newNode;
+//           newNode->parent_ = node;
+//           break;
+//         }
+//         node = node->left_;
+//       } else {
+//         if (node->right_ == nullptr || node->right_ == endNode_) {
+//           node->right_ = newNode;
+//           newNode->parent_ = node;
+//           break;
+//         }
+//         node = node->right_;
+//       }
+//     }
+//     if (comp_(endNode_->parent_->value_, newNode->value_)) {
+//       endNode_->parent_ = find_max(root_);
+//     }
+//   }
+
+//   fixInsert(newNode);  // Rebalance the tree
+//   ++size_;
+//   return std::make_pair(iterator(newNode, endNode_), true);
+// }
+
 template <typename T, typename Comparator>
 std::pair<typename RBTree<T, Comparator>::iterator, bool>
 RBTree<T, Comparator>::insertNonUniq(const value_type& value) {
   Node* newNode = new Node(value);
-  if (root_ == nullptr) {
-    root_ = newNode;
-    root_->parent_ = endNode_;    // Connect root to sentinel
-    endNode_->parent_ = newNode;  // Set endNode to point to new root
-  } else {
-    Node* node = root_;
-    while (node != endNode_) {
-      if (comp_(value, node->value_)) {
-        if (node->left_ == nullptr || node->left_ == endNode_) {
-          node->left_ = newNode;
-          newNode->parent_ = node;
-          break;
-        }
-        node = node->left_;
-      } else {
-        if (node->right_ == nullptr || node->right_ == endNode_) {
-          node->right_ = newNode;
-          newNode->parent_ = node;
-          break;
-        }
-        node = node->right_;
-      }
-    }
-    if (comp_(endNode_->parent_->value_, newNode->value_)) {
-      endNode_->parent_ = find_max(root_);
+  Node* current = root_;
+  Node* parent = nullptr;
+
+  while (current != nullptr && current != endNode_) {
+    parent = current;
+    if (comp_(value, current->value_)) {
+      current = current->left_;
+    } else {
+      current = current->right_;
     }
   }
 
-  fixInsert(newNode);  // Rebalance the tree
+  newNode->parent_ = parent;
+  if (parent == nullptr) {
+    root_ = newNode;
+  } else if (comp_(value, parent->value_)) {
+    parent->left_ = newNode;
+  } else {
+    parent->right_ = newNode;
+  }
+  fixInsert(newNode);
+  if (root_ && endNode_) {
+    Node* maxNode = find_max(root_);
+    if (maxNode) {
+      endNode_->parent_ = maxNode;
+      endNode_->left_ = nullptr;
+      maxNode->right_ = endNode_;
+    }
+  }
   ++size_;
-  return std::make_pair(iterator(newNode, endNode_), true);
+  return std::make_pair(iterator(newNode), true);
 }
 
 // template <typename T, typename Comparator>
@@ -1275,7 +1312,7 @@ void RBTree<T, Comparator>::printTree(Node* node, int level) const {
       std::cout << std::endl;
       auto it = endNode_;
       --it;
-      std::cout << it->value_ << std::endl;
+      std::cout << "--endNode value: " << it->value_ << std::endl;
     }
     return;
   }

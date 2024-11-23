@@ -156,6 +156,7 @@ class Multiset {
 
   // Observers
   key_compare key_comp() const { return comp_; }
+  void printTree() const { tree_.printTree(); }
 
  private:
   key_compare comp_;
