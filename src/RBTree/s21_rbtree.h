@@ -63,14 +63,14 @@ class Iterator {
   Iterator(Node* cur, Node* end) : current_node_(cur), end_node_(end) {}
   Iterator(Node* cur) : current_node_(cur), end_node_(nullptr) {}
   Iterator(const Iterator& other) = default;
-  Iterator(Iterator&& other) noexcept = default;
+  Iterator(Iterator&& other) noexcept;
 
   ConstIterator<T> toConstIterator() const {
     return ConstIterator<T>(current_node_, end_node_);
   }
 
   Iterator& operator=(const Iterator& other) = default;
-  Iterator& operator=(Iterator&& other) noexcept = default;
+  Iterator& operator=(Iterator&& other) noexcept;
   reference operator*();
   value_type* operator->();
   bool operator==(const Iterator& other) const;
@@ -92,6 +92,22 @@ class Iterator {
 // --- Implementations for Iterator ---
 
 template <typename T>
+Iterator<T>::Iterator(Iterator&& other) noexcept
+    : current_node_(other.current_node_), end_node_(other.end_node_) {
+  other.current_node_ = other.end_node_;
+}
+
+template <typename T>
+Iterator<T>& Iterator<T>::operator=(Iterator&& other) noexcept {
+  if (this != &other) {
+    current_node_ = other.current_node_;
+    end_node_ = other.end_node_;
+    other.current_node_ = other.end_node_;
+  }
+  return *this;
+}
+
+template <typename T>
 typename Iterator<T>::Node* Iterator<T>::getCurNode() const {
   return current_node_;
 }
@@ -99,9 +115,16 @@ typename Iterator<T>::Node* Iterator<T>::getCurNode() const {
 template <typename T>
 typename Iterator<T>::Node* Iterator<T>::getMaxNode() const {
   Node* node = current_node_;
-  if (node == nullptr) return end_node_;  // Handle null case
-  // Traverse to the rightmost node
-  while (node->right_ != end_node_ && node->right_ != nullptr) {
+  if (node == nullptr) {
+    return end_node_;
+  }
+  if (node == end_node_) {
+    return end_node_->parent_;
+  }
+  while (node->parent_ != nullptr) {
+    node = node->parent_;
+  }
+  while (node->right_ && node->right_ != end_node_ && node->right_ != nullptr) {
     node = node->right_;
   }
   return node;
@@ -192,16 +215,13 @@ Iterator<T>& Iterator<T>::operator--() {
   if (current_node_ == nullptr) {
     current_node_ = end_node_;
   } else if (current_node_ == end_node_) {
-    // Move to the maximum node in the tree
     current_node_ = getMaxNode();
   } else if (current_node_->left_) {
-    // Move to the rightmost child of the left subtree
     current_node_ = current_node_->left_;
     while (current_node_->right_) {
       current_node_ = current_node_->right_;
     }
   } else {
-    // Traverse up the parent nodes until finding the first right child
     Node* parent = current_node_->parent_;
     while (parent && current_node_ == parent->left_) {
       current_node_ = parent;
@@ -209,7 +229,6 @@ Iterator<T>& Iterator<T>::operator--() {
     }
     current_node_ = parent ? parent : end_node_;
   }
-
   return *this;
 }
 
@@ -245,9 +264,9 @@ class ConstIterator : public Iterator<T> {
   ConstIterator(Node* cur) : Iterator<T>(cur, nullptr) {}
   ConstIterator(const Iterator<T>& other) : Iterator<T>(other) {}
   ConstIterator(const ConstIterator& other) = default;
-  ConstIterator(ConstIterator&& other) noexcept = default;
+  ConstIterator(ConstIterator&& other) noexcept;
   ConstIterator& operator=(const ConstIterator& other) = default;
-  ConstIterator& operator=(ConstIterator&& other) noexcept = default;
+  ConstIterator& operator=(ConstIterator&& other) noexcept;
   const value_type* operator->() const;
   const_reference operator*() const;
   ConstIterator next() const;
@@ -255,6 +274,21 @@ class ConstIterator : public Iterator<T> {
 };
 
 // --- Implementations for Const Iterator ---
+
+template <typename T>
+ConstIterator<T>::ConstIterator(ConstIterator&& other) noexcept
+    : Iterator<T>(std::move(other)) {
+  other.current_node_ = other.end_node_;
+}
+
+template <typename T>
+ConstIterator<T>& ConstIterator<T>::operator=(ConstIterator&& other) noexcept {
+  if (this != &other) {
+    Iterator<T>::operator=(std::move(other));
+    other.current_node_ = other.end_node_;
+  }
+  return *this;
+}
 
 template <typename T>
 const typename ConstIterator<T>::value_type* ConstIterator<T>::operator->()
@@ -643,8 +677,8 @@ void RBTree<T, Comparator>::mergeNonUniq(RBTree& other) {
 //     // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
 //     std::cout << "Tree is empty. Setting root and endNode_." << std::endl;
 //     // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-//     root_ = newNode;              // If tree is empty, new node becomes root
-//     root_->parent_ = endNode_;    // Connect root to sentinel
+//     root_ = newNode;              // If tree is empty, new node becomes
+//     root root_->parent_ = endNode_;    // Connect root to sentinel
 //     endNode_->parent_ = newNode;  // Set endNode to point to new root
 //   } else {
 //     Node* node = root_;
@@ -744,7 +778,8 @@ RBTree<T, Comparator>::insertNonUniq(const value_type& value) {
 //   node->parent_->isRed()) {
 //     // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
 //     std::cout << "At node: " << node->value_
-//               << ", parent: " << node->parent_->value_ << ", grandparent: ";
+//               << ", parent: " << node->parent_->value_ << ", grandparent:
+//               ";
 //     if (node->parent_->parent_) {
 //       std::cout << node->parent_->parent_->value_;
 //     } else {
@@ -810,7 +845,8 @@ RBTree<T, Comparator>::insertNonUniq(const value_type& value) {
 //         }
 
 //         // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//         std::cout << "Case 2b (mirror): Left rotation needed." << std::endl;
+//         std::cout << "Case 2b (mirror): Left rotation needed." <<
+//         std::endl;
 //         // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
 //         // Case 2b:
 //         node->parent_->color_ = Color::BLACK;
@@ -1229,6 +1265,18 @@ void RBTree<T, Comparator>::deleteTree(Node* node) {
 template <typename T, typename Comparator>
 void RBTree<T, Comparator>::printTree(Node* node, int level) const {
   if (node == nullptr || node == endNode_) {
+    if (node == endNode_) {
+      std::cout << "endNode_->parent_: ";
+      if (endNode_->parent_) {
+        std::cout << endNode_->parent_->value_;
+      } else {
+        std::cout << "nullptr";
+      }
+      std::cout << std::endl;
+      auto it = endNode_;
+      --it;
+      std::cout << it->value_ << std::endl;
+    }
     return;
   }
 
@@ -1253,7 +1301,6 @@ RBTree<T, Comparator>::insert(const value_type& value) {
   Node* current = root_;
   Node* parent = nullptr;
 
-  // Find the correct location for the new node
   while (current != nullptr && current != endNode_) {
     parent = current;
     if (comp_(value, current->value_)) {
@@ -1274,18 +1321,14 @@ RBTree<T, Comparator>::insert(const value_type& value) {
   } else {
     parent->right_ = newNode;
   }
-
-  // Fix the tree to maintain red-black properties
   fixInsert(newNode);
   if (root_ && endNode_) {
-    // std::cout << "WE ACTUALLY GO HERE" << std::endl;  //// DELETE
     Node* maxNode = find_max(root_);
     if (maxNode) {
       endNode_->parent_ = maxNode;
       endNode_->left_ = nullptr;
       maxNode->right_ = endNode_;
     }
-    // std::cout << endNode_->parent_->value_ << std::endl;  ///// DELETE
   }
   ++size_;
   return std::make_pair(iterator(newNode), true);
@@ -1318,7 +1361,6 @@ void RBTree<T, Comparator>::fixInsert(Node* node) {
         // Case 3: Right rotate
         rightRotate(grandparent);
         std::swap(parent->color_, grandparent->color_);
-        //  node = parent;  ??????????????????
         break;
       }
     } else {
@@ -1339,7 +1381,6 @@ void RBTree<T, Comparator>::fixInsert(Node* node) {
         // Case 3: Left rotate
         leftRotate(grandparent);
         std::swap(parent->color_, grandparent->color_);
-        // node = parent;  ???????????
         break;
       }
     }

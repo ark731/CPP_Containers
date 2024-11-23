@@ -11,10 +11,11 @@ class Multiset {
   using size_type = std::size_t;
   using difference_type = std::ptrdiff_t;
   using key_compare = Comparator;
+  using value_compare = key_compare;
   using reference = key_type&;
   using const_reference = const key_type&;
-  using iterator = Iterator<key_type>;
-  using const_iterator = ConstIterator<key_type>;
+  using iterator = typename RBTree<key_type, key_compare>::iterator;
+  using const_iterator = typename RBTree<key_type, key_compare>::const_iterator;
   using Node = RBTreeNode<key_type>;
 
   // Constructors and Destructor
@@ -54,11 +55,16 @@ class Multiset {
     std::vector<iterator> result;
     result.reserve(sizeof...(args));
 
+    std::vector<iterator> inserted_iterators;
+
     try {
       (
           [&] {
             auto [it, inserted] = tree_.insertNonUniq(std::forward<Args>(args));
             result.push_back(it);
+            if (inserted) {
+              inserted_iterators.push_back(it);
+            }
           }(),
           ...);
     } catch (...) {
@@ -72,30 +78,41 @@ class Multiset {
   }
 
   void erase(iterator pos) { tree_.erase(pos); }
+
   size_type erase(const key_type& key) {
     size_type count = 0;
     auto it = find(key);
+    // // // DELETE vvvvvv
+    std::cout << "Now erasing" << std::endl;
+    // // // DELETE ^^^^^^
     while (it != end() && *it == key) {
-      erase(it++);
+      // // // DELETE vvvvvv
+      std::cout << "erasing:" << *it << std::endl;
+      // // // DELETE ^^^^^^
+      erase(it);
+      it = find(key);
       ++count;
     }
     return count;
   }
   void clear() noexcept { tree_.clear(); }
-  void swap(Multiset& other) noexcept {
-    std::swap(comp_, other.comp_);
-    tree_.swap(other.tree_);
-  }
+  void swap(Multiset& other) noexcept { tree_.swap(other.tree_); }
 
   // Lookup
 
+  // size_type count(const key_type& key) const {
+  //   size_type count = 0;
+  //   for (auto it = lower_bound(key); it != end() && *it == key; ++it) {
+  //     ++count;
+  //   }
+  //   return count;
+  // }
+
   size_type count(const key_type& key) const {
-    size_type count = 0;
-    for (auto it = lower_bound(key); it != end() && *it == key; ++it) {
-      ++count;
-    }
-    return count;
+    auto range = equal_range(key);
+    return std::distance(range.first, range.second);
   }
+
   // Const versions (already implemented)
   const_iterator find(const key_type& key) const {
     auto it = tree_.find(key);

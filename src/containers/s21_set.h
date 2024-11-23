@@ -9,16 +9,14 @@ template <typename Key, typename Comparator = std::less<Key>>
 class Set {
  public:
   using key_type = Key;
-  using value_type = key_type;
   using key_compare = Comparator;
   using value_compare = key_compare;
   using size_type = std::size_t;
   using difference_type = std::ptrdiff_t;
   using reference = key_type&;
   using const_reference = const key_type&;
-  using iterator = typename RBTree<value_type, key_compare>::iterator;
-  using const_iterator =
-      typename RBTree<value_type, key_compare>::const_iterator;
+  using iterator = typename RBTree<key_type, key_compare>::iterator;
+  using const_iterator = typename RBTree<key_type, key_compare>::const_iterator;
   using Node = RBTreeNode<key_type>;
 
   // Constructors and Destructor
@@ -74,10 +72,6 @@ class Set {
     try {
       (
           [&] {
-            // // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-            // std::cout << "Inserting: " << std::forward<Args>(args) <<
-            // std::endl;
-            // // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
             auto [it, inserted] = insert(std::forward<Args>(args));
             result.push_back({it, inserted});
             if (inserted) {
@@ -91,10 +85,6 @@ class Set {
       }
       throw;
     }
-    // // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-    // std::cout << "Tree structure after inserting:\n";
-    // printTree();
-    // // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
 
     return result;
   }
@@ -114,10 +104,7 @@ class Set {
     return 0;
   }
   void clear() noexcept { tree_.clear(); }
-  void swap(Set& other) noexcept {
-    std::swap(comp_, other.comp_);
-    tree_.swap(other.tree_);
-  }
+  void swap(Set& other) noexcept { tree_.swap(other.tree_); }
 
   // Lookup
   size_type count(const key_type& key) const {

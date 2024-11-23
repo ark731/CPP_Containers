@@ -1,0 +1,202 @@
+#include <gtest/gtest.h>
+
+#include <utility>
+
+#include "../s21_containersplus.h"
+
+namespace s21 {
+
+class MultisetTest : public ::testing::Test {
+ protected:
+  Multiset<int> default_multiset;
+  Multiset<int, std::greater<int>> custom_comp_multiset{std::greater<int>()};
+};
+
+// Test default constructor
+TEST_F(MultisetTest, DefaultConstructor) {
+  EXPECT_TRUE(default_multiset.empty());
+  EXPECT_EQ(default_multiset.size(), 0);
+}
+
+// Test constructor with custom comparator
+TEST_F(MultisetTest, CustomComparatorConstructor) {
+  EXPECT_TRUE(custom_comp_multiset.empty());
+  EXPECT_EQ(custom_comp_multiset.size(), 0);
+}
+
+// Test insert single element
+TEST_F(MultisetTest, InsertSingleElement) {
+  auto it = default_multiset.insert(10);
+  EXPECT_FALSE(default_multiset.empty());
+  EXPECT_EQ(default_multiset.size(), 1);
+  EXPECT_EQ(*it, 10);
+}
+
+// Test insert duplicate elements
+TEST_F(MultisetTest, InsertDuplicateElements) {
+  default_multiset.insert(10);
+  default_multiset.insert(10);
+  EXPECT_EQ(default_multiset.size(), 2);
+
+  auto it = default_multiset.begin();
+  EXPECT_EQ(*it, 10);
+  ++it;
+  EXPECT_EQ(*it, 10);
+}
+
+// Test custom comparator behavior
+TEST_F(MultisetTest, CustomComparatorInsert) {
+  custom_comp_multiset.insert(5);
+  custom_comp_multiset.insert(10);
+  custom_comp_multiset.insert(1);
+
+  auto it = custom_comp_multiset.begin();
+  EXPECT_EQ(*it, 10);
+  ++it;
+  EXPECT_EQ(*it, 5);
+  ++it;
+  EXPECT_EQ(*it, 1);
+}
+
+// Test empty() method
+TEST_F(MultisetTest, EmptyMethod) {
+  EXPECT_TRUE(default_multiset.empty());
+  default_multiset.insert(42);
+  EXPECT_FALSE(default_multiset.empty());
+}
+
+// Test clear() method
+TEST_F(MultisetTest, ClearMethod) {
+  default_multiset.insert(10);
+  default_multiset.insert(20);
+  EXPECT_EQ(default_multiset.size(), 2);
+
+  default_multiset.clear();
+  EXPECT_TRUE(default_multiset.empty());
+  EXPECT_EQ(default_multiset.size(), 0);
+}
+
+// Test size() method
+TEST_F(MultisetTest, SizeMethod) {
+  EXPECT_EQ(default_multiset.size(), 0);
+  default_multiset.insert(10);
+  EXPECT_EQ(default_multiset.size(), 1);
+  default_multiset.insert(20);
+  EXPECT_EQ(default_multiset.size(), 2);
+}
+
+// Test max_size() method
+TEST_F(MultisetTest, MaxSizeMethod) {
+  EXPECT_GT(default_multiset.max_size(), 0);
+}
+
+// Test iterator begin() and end()
+TEST_F(MultisetTest, IteratorBeginEnd) {
+  default_multiset.insert(10);
+  default_multiset.insert(20);
+
+  auto it = default_multiset.begin();
+  EXPECT_EQ(*it, 10);
+  ++it;
+  EXPECT_EQ(*it, 20);
+  ++it;
+  EXPECT_EQ(it, default_multiset.end());
+}
+
+// Test erase by iterator
+TEST_F(MultisetTest, EraseByIterator) {
+  default_multiset.insert(10);
+  default_multiset.insert(20);
+  default_multiset.insert(30);
+  EXPECT_EQ(default_multiset.size(), 3);
+
+  auto it = default_multiset.begin();
+  ++it;  // Move to 20
+  default_multiset.erase(it);
+
+  EXPECT_EQ(default_multiset.size(), 2);
+  it = default_multiset.begin();
+  EXPECT_EQ(*it, 10);
+  ++it;
+  EXPECT_EQ(*it, 30);
+}
+
+// Test erase by key
+TEST_F(MultisetTest, EraseByKey) {
+  default_multiset.insert(10);
+  default_multiset.insert(20);
+  default_multiset.insert(10);
+  EXPECT_EQ(default_multiset.size(), 3);
+
+  size_t erased = default_multiset.erase(10);
+  EXPECT_EQ(erased, 1);
+  EXPECT_EQ(default_multiset.size(), 2);
+  // // // DELETE vvvvvvvvvvvvvvvvvvvvvvvvvvvv
+  std::cout << "Size after erasing 10: " << default_multiset.size()
+            << std::endl;
+  // // // DELETE ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  erased = default_multiset.erase(10);  // Try to erase 10 again
+  EXPECT_EQ(erased, 0);
+  EXPECT_EQ(default_multiset.size(), 2);
+}
+
+// // Test erase all occurrences of a key
+// TEST_F(MultisetTest, EraseAllOccurrences) {
+//   default_multiset.insert(10);
+//   default_multiset.insert(10);
+//   default_multiset.insert(10);
+//   EXPECT_EQ(default_multiset.size(), 3);
+
+//   size_t erased = default_multiset.erase(10);
+//   EXPECT_EQ(erased, 3);
+//   EXPECT_EQ(default_multiset.size(), 0);
+// }
+
+// Test count method
+TEST_F(MultisetTest, CountMethod) {
+  default_multiset.insert(10);
+  default_multiset.insert(20);
+  default_multiset.insert(10);
+
+  EXPECT_EQ(default_multiset.count(10), 2);  // Count of 10
+  EXPECT_EQ(default_multiset.count(20), 1);  // Count of 20
+  EXPECT_EQ(default_multiset.count(30), 0);  // Count of 30 (not inserted)
+}
+
+// Test insert_many with multiple arguments
+TEST_F(MultisetTest, InsertMany) {
+  auto result = default_multiset.insert_many(10, 20, 30, 20, 10);
+  EXPECT_EQ(result.size(), 5);            // 5 insertions attempted
+  EXPECT_EQ(default_multiset.size(), 5);  // 5 elements in multiset
+
+  EXPECT_EQ(default_multiset.count(10), 2);
+  EXPECT_EQ(default_multiset.count(20), 2);
+  EXPECT_EQ(default_multiset.count(30), 1);
+}
+
+// Test insert_many with empty input
+TEST_F(MultisetTest, InsertManyEmptyInput) {
+  auto result = default_multiset.insert_many();
+  EXPECT_EQ(result.size(), 0);  // No elements inserted
+  EXPECT_TRUE(default_multiset.empty());
+}
+
+// Test custom comparator with insert_many
+TEST_F(MultisetTest, CustomComparatorInsertMany) {
+  auto result = custom_comp_multiset.insert_many(10, 20, 30, 20, 10);
+  EXPECT_EQ(result.size(), 5);
+  EXPECT_EQ(custom_comp_multiset.size(), 5);
+
+  auto it = custom_comp_multiset.begin();
+  EXPECT_EQ(*it, 30);  // Largest element first due to greater comparator
+  ++it;
+  EXPECT_EQ(*it, 20);
+  ++it;
+  EXPECT_EQ(*it, 20);
+  ++it;
+  EXPECT_EQ(*it, 10);
+  ++it;
+  EXPECT_EQ(*it, 10);
+}
+
+}  // namespace s21
