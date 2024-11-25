@@ -376,6 +376,7 @@ class RBTree {
  private:
   void swapNode(Node* fNode, Node* sNode);
   Node* copyTree(Node* otherNode, Node* parentNode);
+  // void transplant(Node* u, Node* v);
   void deleteTree(Node* node);
   void printTree(Node* node, int depth = 0) const;
   Node* find_min(Node* root) const;
@@ -915,7 +916,7 @@ void RBTree<T, Comparator>::erase(iterator pos) {
   }
 
   Node* nodeToDelete = pos.getCurNode();
-  if (!nodeToDelete) return;
+  if (!nodeToDelete || nodeToDelete == endNode_) return;
 
   Node* replacementNode = nullptr;
 
@@ -935,7 +936,7 @@ void RBTree<T, Comparator>::erase(iterator pos) {
   }
 
   // Replace nodeToDelete with child (if exists)
-  if (replacementNode) {
+  if (replacementNode && replacementNode != endNode_) {
     replacementNode->parent_ = nodeToDelete->parent_;
     if (nodeToDelete->parent_ == nullptr) {
       root_ = replacementNode;
@@ -979,6 +980,129 @@ void RBTree<T, Comparator>::erase(iterator pos) {
   }
 }
 
+// template <typename T, typename Comparator>
+// void RBTree<T, Comparator>::erase(iterator pos) {
+//   if (pos == end()) {
+//     return;  // Cannot erase the end iterator
+//   }
+
+//   Node* nodeToErase = pos.getCurNode();
+//   Node* x = nullptr;
+//   Node* y = nodeToErase;  // y will be the node to be unlinked from the tree
+//   Color yOriginalColor = y->color_;
+
+//   if (nodeToErase->left_ == nullptr) {
+//     x = nodeToErase->right_;
+//     transplant(nodeToErase, nodeToErase->right_);
+//   } else if (nodeToErase->right_ == nullptr) {
+//     x = nodeToErase->left_;
+//     transplant(nodeToErase, nodeToErase->left_);
+//   } else {
+//     y = find_min(nodeToErase->right_);
+//     yOriginalColor = y->color_;
+//     x = y->right_;
+//     if (y->parent_ == nodeToErase) {
+//       x->parent_ = y;
+//     } else {
+//       transplant(y, y->right_);
+//       y->right_ = nodeToErase->right_;
+//       y->right_->parent_ = y;
+//     }
+//     transplant(nodeToErase, y);
+//     y->left_ = nodeToErase->left_;
+//     y->left_->parent_ = y;
+//     y->color_ = nodeToErase->color_;
+//   }
+
+//   if (yOriginalColor == Color::BLACK) {
+//     fixErase(x);
+//   }
+
+//   delete nodeToErase;
+//   --size_;
+// }
+
+// template <typename T, typename Comparator>
+// void RBTree<T, Comparator>::transplant(Node* u, Node* v) {
+//   if (u->parent_ == nullptr) {
+//     root_ = v;
+//   } else if (u == u->parent_->left_) {
+//     u->parent_->left_ = v;
+//   } else {
+//     u->parent_->right_ = v;
+//   }
+//   if (v != nullptr) {
+//     v->parent_ = u->parent_;
+//   }
+// }
+
+// template <typename T, typename Comparator>
+// void RBTree<T, Comparator>::fixErase(Node* x) {
+//   while (x != root_ && (x == nullptr || x->isBlack())) {
+//     if (x == x->parent_->left_) {
+//       Node* w = x->parent_->right_;
+//       if (w->isRed()) {
+//         w->color_ = Color::BLACK;
+//         x->parent_->color_ = Color::RED;
+//         leftRotate(x->parent_);
+//         w = x->parent_->right_;
+//       }
+//       if ((w->left_ == nullptr || w->left_->isBlack()) &&
+//           (w->right_ == nullptr || w->right_->isBlack())) {
+//         w->color_ = Color::RED;
+//         x = x->parent_;
+//       } else {
+//         if (w->right_ == nullptr || w->right_->isBlack()) {
+//           if (w->left_ != nullptr) {
+//             w->left_->color_ = Color::BLACK;
+//           }
+//           w->color_ = Color::RED;
+//           rightRotate(w);
+//           w = x->parent_->right_;
+//         }
+//         w->color_ = x->parent_->color_;
+//         x->parent_->color_ = Color::BLACK;
+//         if (w->right_ != nullptr) {
+//           w->right_->color_ = Color::BLACK;
+//         }
+//         leftRotate(x->parent_);
+//         x = root_;
+//       }
+//     } else {
+//       Node* w = x->parent_->left_;
+//       if (w->isRed()) {
+//         w->color_ = Color::BLACK;
+//         x->parent_->color_ = Color::RED;
+//         rightRotate(x->parent_);
+//         w = x->parent_->left_;
+//       }
+//       if ((w->right_ == nullptr || w->right_->isBlack()) &&
+//           (w->left_ == nullptr || w->left_->isBlack())) {
+//         w->color_ = Color::RED;
+//         x = x->parent_;
+//       } else {
+//         if (w->left_ == nullptr || w->left_->isBlack()) {
+//           if (w->right_ != nullptr) {
+//             w->right_->color_ = Color::BLACK;
+//           }
+//           w->color_ = Color::RED;
+//           leftRotate(w);
+//           w = x->parent_->left_;
+//         }
+//         w->color_ = x->parent_->color_;
+//         x->parent_->color_ = Color::BLACK;
+//         if (w->left_ != nullptr) {
+//           w->left_->color_ = Color::BLACK;
+//         }
+//         rightRotate(x->parent_);
+//         x = root_;
+//       }
+//     }
+//   }
+//   if (x != nullptr) {
+//     x->color_ = Color::BLACK;
+//   }
+// }
 template <typename T, typename Comparator>
 void RBTree<T, Comparator>::fixErase(Node* node) {
   while (node != root_ && node->color_ == Color::BLACK) {
@@ -991,39 +1115,34 @@ void RBTree<T, Comparator>::fixErase(Node* node) {
         node->parent_->color_ = Color::RED;
         leftRotate(node->parent_);
         sibling = node->parent_->right_;
+        break;  // DELETE PROBABLY
       }
 
-      if (sibling->left_ == nullptr || sibling->left_ == endNode_ ||
-          sibling->left_->color_ == Color::BLACK) {
+      // Case 2: Both sibling's children are black or null
+      if ((!sibling->left_ || sibling->left_ == endNode_ ||
+           sibling->left_->color_ == Color::BLACK) &&
+          (!sibling->right_ || sibling->right_ == endNode_ ||
+           sibling->right_->color_ == Color::BLACK)) {
+        sibling->color_ = Color::RED;
+        node = node->parent_;
+      } else {
         if (sibling->right_ == nullptr || sibling->right_ == endNode_ ||
             sibling->right_->color_ == Color::BLACK) {
-          // Case 2: Both of sibling's children are black or null
-          sibling->color_ = Color::RED;
-          node = node->parent_;
-        } else {
-          if (sibling->right_ == nullptr || sibling->right_ == endNode_ ||
-              sibling->right_->color_ == Color::BLACK) {
-            // Case 3: Sibling's left child is red, right is black
+          // Case 3: Sibling's left child is red, right is black
+          if (sibling->left_ && sibling->left_ != endNode_) {
             sibling->left_->color_ = Color::BLACK;
-            sibling->color_ = Color::RED;
-            rightRotate(sibling);
-            sibling = node->parent_->right_;
           }
-          // Case 4: Sibling's right child is red
-          sibling->color_ = node->parent_->color_;
-          node->parent_->color_ = Color::BLACK;
-          if (sibling->right_ != endNode_ && sibling->right_ != nullptr) {
-            sibling->right_->color_ = Color::BLACK;
-          }
-          leftRotate(node->parent_);
-          node = root_;
+          sibling->color_ = Color::RED;
+          rightRotate(sibling);
+          sibling = node->parent_->right_;
+          break;  // DELETE PROBABLY
         }
-      } else {
-        // Case 5: Sibling's left child is red
+
+        // Case 4: Sibling's right child is red
         sibling->color_ = node->parent_->color_;
         node->parent_->color_ = Color::BLACK;
-        if (sibling->left_ != nullptr && sibling->left_ != endNode_) {
-          sibling->left_->color_ = Color::BLACK;
+        if (sibling->right_ && sibling->right_ != endNode_) {
+          sibling->right_->color_ = Color::BLACK;
         }
         leftRotate(node->parent_);
         node = root_;
@@ -1033,44 +1152,39 @@ void RBTree<T, Comparator>::fixErase(Node* node) {
       Node* sibling = node->parent_->left_;
 
       if (sibling->color_ == Color::RED) {
-        // Case 1:
+        // Case 1: Sibling is red, rotate
         sibling->color_ = Color::BLACK;
         node->parent_->color_ = Color::RED;
         rightRotate(node->parent_);
         sibling = node->parent_->left_;
+        break;  // DELETE PROBABLY
       }
 
-      if (sibling->right_ == nullptr || sibling->right_ == endNode_ ||
-          sibling->right_->color_ == Color::BLACK) {
+      // Case 2: Both sibling's children are black or null
+      if ((!sibling->right_ || sibling->right_ == endNode_ ||
+           sibling->right_->color_ == Color::BLACK) &&
+          (!sibling->left_ || sibling->left_ == endNode_ ||
+           sibling->left_->color_ == Color::BLACK)) {
+        sibling->color_ = Color::RED;
+        node = node->parent_;
+      } else {
         if (sibling->left_ == nullptr || sibling->left_ == endNode_ ||
             sibling->left_->color_ == Color::BLACK) {
-          // Case 2:
-          sibling->color_ = Color::RED;
-          node = node->parent_;
-        } else {
-          if (sibling->left_->color_ == Color::BLACK) {
-            // Case 3:
+          // Case 3: Sibling's right child is red, left is black
+          if (sibling->right_ && sibling->right_ != endNode_) {
             sibling->right_->color_ = Color::BLACK;
-            sibling->color_ = Color::RED;
-            leftRotate(sibling);
-            sibling = node->parent_->left_;
           }
-
-          // Case 4:
-          sibling->color_ = node->parent_->color_;
-          node->parent_->color_ = Color::BLACK;
-          if (sibling->left_ != nullptr && sibling->left_ != endNode_) {
-            sibling->left_->color_ = Color::BLACK;
-          }
-          rightRotate(node->parent_);
-          node = root_;
+          sibling->color_ = Color::RED;
+          leftRotate(sibling);
+          sibling = node->parent_->left_;
+          break;  // DELETE PROBABLY
         }
-      } else {
-        // Case 5:
+
+        // Case 4: Sibling's left child is red
         sibling->color_ = node->parent_->color_;
         node->parent_->color_ = Color::BLACK;
-        if (sibling->right_ != nullptr && sibling->right_ != endNode_) {
-          sibling->right_->color_ = Color::BLACK;
+        if (sibling->left_ && sibling->left_ != endNode_) {
+          sibling->left_->color_ = Color::BLACK;
         }
         rightRotate(node->parent_);
         node = root_;
@@ -1092,6 +1206,129 @@ void RBTree<T, Comparator>::fixErase(Node* node) {
 
   node->color_ = Color::BLACK;
 }
+
+// template <typename T, typename Comparator>
+// void RBTree<T, Comparator>::fixErase(Node* node) {
+//   // // // DELETE vvvvvvvv
+//   std::cout << "Node: " << node << ", Parent: " << node->parent_ <<
+//   std::endl;
+//   // // // DELETE ^^^^^^
+//   while (node != root_ && node->color_ == Color::BLACK) {
+//     if (node == node->parent_->left_) {
+//       Node* sibling = node->parent_->right_;
+//       if (!sibling || sibling == endNode_) {
+//         // Handle null or endNode case
+//         node = root_;
+//         continue;
+//       }
+
+//       if (sibling->color_ == Color::RED) {
+//         // Case 1: Sibling is red, rotate
+//         sibling->color_ = Color::BLACK;
+//         node->parent_->color_ = Color::RED;
+//         leftRotate(node->parent_);
+//         sibling = node->parent_->right_;
+//       }
+
+//       if (sibling->left_ == nullptr || sibling->left_ == endNode_ ||
+//           sibling->left_->color_ == Color::BLACK) {
+//         if (sibling->right_ == nullptr || sibling->right_ == endNode_ ||
+//             sibling->right_->color_ == Color::BLACK) {
+//           // Case 2: Both of sibling's children are black or null
+//           sibling->color_ = Color::RED;
+//           node = node->parent_;
+//         } else {
+//           if (sibling->right_ == nullptr || sibling->right_ == endNode_ ||
+//               sibling->right_->color_ == Color::BLACK) {
+//             // Case 3: Sibling's left child is red, right is black
+//             sibling->left_->color_ = Color::BLACK;
+//             sibling->color_ = Color::RED;
+//             rightRotate(sibling);
+//             sibling = node->parent_->right_;
+//           }
+//           // Case 4: Sibling's right child is red
+//           sibling->color_ = node->parent_->color_;
+//           node->parent_->color_ = Color::BLACK;
+//           if (sibling->right_ != endNode_ && sibling->right_ != nullptr) {
+//             sibling->right_->color_ = Color::BLACK;
+//           }
+//           leftRotate(node->parent_);
+//           node = root_;
+//         }
+//       } else {
+//         // Case 5: Sibling's left child is red
+//         sibling->color_ = node->parent_->color_;
+//         node->parent_->color_ = Color::BLACK;
+//         if (sibling->left_ != nullptr && sibling->left_ != endNode_) {
+//           sibling->left_->color_ = Color::BLACK;
+//         }
+//         leftRotate(node->parent_);
+//         node = root_;
+//       }
+//     } else {
+//       // Symmetric to the above
+//       Node* sibling = node->parent_->left_;
+
+//       if (sibling->color_ == Color::RED) {
+//         // Case 1:
+//         sibling->color_ = Color::BLACK;
+//         node->parent_->color_ = Color::RED;
+//         rightRotate(node->parent_);
+//         sibling = node->parent_->left_;
+//       }
+
+//       if (sibling->right_ == nullptr || sibling->right_ == endNode_ ||
+//           sibling->right_->color_ == Color::BLACK) {
+//         if (sibling->left_ == nullptr || sibling->left_ == endNode_ ||
+//             sibling->left_->color_ == Color::BLACK) {
+//           // Case 2:
+//           sibling->color_ = Color::RED;
+//           node = node->parent_;
+//         } else {
+//           if (sibling->left_->color_ == Color::BLACK) {
+//             // Case 3:
+//             sibling->right_->color_ = Color::BLACK;
+//             sibling->color_ = Color::RED;
+//             leftRotate(sibling);
+//             sibling = node->parent_->left_;
+//           }
+
+//           // Case 4:
+//           sibling->color_ = node->parent_->color_;
+//           node->parent_->color_ = Color::BLACK;
+//           if (sibling->left_ != nullptr && sibling->left_ != endNode_) {
+//             sibling->left_->color_ = Color::BLACK;
+//           }
+//           rightRotate(node->parent_);
+//           node = root_;
+//         }
+//       } else {
+//         // Case 5:
+//         sibling->color_ = node->parent_->color_;
+//         node->parent_->color_ = Color::BLACK;
+//         if (sibling->right_ != nullptr && sibling->right_ != endNode_) {
+//           sibling->right_->color_ = Color::BLACK;
+//         }
+//         rightRotate(node->parent_);
+//         node = root_;
+//       }
+//     }
+
+//     if (node != nullptr && node == endNode_) {
+//       // Find the new maximum node after deletion
+//       Node* newMaxNode = find_max(root_);
+//       if (newMaxNode != nullptr) {
+//         // Adjust endNode's parent to point to the new maximum node
+//         endNode_->parent_ = newMaxNode;
+//       } else {
+//         // If the tree is empty, reset endNode to nullptr
+//         endNode_->parent_ = nullptr;
+//       }
+//     }
+//   }
+
+//   node->color_ = Color::BLACK;
+// }
 
 // template <typename T, typename Comparator>
 // void RBTree<T, Comparator>::leftRotate(Node* node) {

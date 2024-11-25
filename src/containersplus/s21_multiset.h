@@ -82,13 +82,17 @@ class Multiset {
   size_type erase(const key_type& key) {
     size_type count = 0;
     auto it = find(key);
-    // // // DELETE vvvvvv
-    std::cout << "Now erasing" << std::endl;
-    // // // DELETE ^^^^^^
+    if (it != end() && *it == key) {
+      erase(it);
+      ++count;
+    }
+    return count;
+  }
+
+  size_type erase_all(const key_type& key) {
+    size_type count = 0;
+    auto it = find(key);
     while (it != end() && *it == key) {
-      // // // DELETE vvvvvv
-      std::cout << "erasing:" << *it << std::endl;
-      // // // DELETE ^^^^^^
       erase(it);
       it = find(key);
       ++count;
@@ -99,14 +103,6 @@ class Multiset {
   void swap(Multiset& other) noexcept { tree_.swap(other.tree_); }
 
   // Lookup
-
-  // size_type count(const key_type& key) const {
-  //   size_type count = 0;
-  //   for (auto it = lower_bound(key); it != end() && *it == key; ++it) {
-  //     ++count;
-  //   }
-  //   return count;
-  // }
 
   size_type count(const key_type& key) const {
     auto range = equal_range(key);

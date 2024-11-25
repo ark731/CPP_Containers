@@ -37,6 +37,20 @@ class Map {
   Map(Map&& other) noexcept
       : comp_(std::move(other.comp_)), tree_(std::move(other.tree_)) {}
   ~Map() = default;
+  Map(std::initializer_list<std::pair<const Key, T>> init_list)
+      : comp_(), tree_(value_compare(comp_)) {
+    for (const auto& pair : init_list) {
+      this->insert(pair);
+    }
+  }
+
+  Map(std::initializer_list<std::pair<const Key, T>> init_list,
+      const key_compare& comp)
+      : comp_(comp), tree_(value_compare(comp_)) {
+    for (const auto& pair : init_list) {
+      this->insert(pair);
+    }
+  }
 
   Map& operator=(
       Map other) noexcept {  // Copy-and-swap idiom for exception safety
