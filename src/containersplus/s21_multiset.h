@@ -91,14 +91,19 @@ class Multiset {
 
   size_type erase_all(const key_type& key) {
     size_type count = 0;
-    auto it = find(key);
-    while (it != end() && *it == key) {
-      erase(it);
-      it = find(key);
-      ++count;
+    auto it = begin();
+    while (it != end()) {
+      if (*it == key) {
+        auto toErase = it++;
+        erase(toErase);
+        ++count;
+      } else {
+        ++it;
+      }
     }
     return count;
   }
+
   void clear() noexcept { tree_.clear(); }
   void swap(Multiset& other) noexcept { tree_.swap(other.tree_); }
 

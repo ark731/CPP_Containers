@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <utility>
+
 #include "../s21_containers.h"
 
 namespace s21 {
@@ -142,7 +144,7 @@ TEST_F(MapTest, KeyCompAndValueComp) {
   EXPECT_TRUE(default_map.value_comp()({1, "one"}, {2, "two"}));
 }
 
-TEST(MapTest, InsertManyMixedValidity) {
+TEST_F(MapTest, InsertManyMixedValidity) {
   Map<int, std::string> map;
   auto results =
       map.insert_many(std::make_pair(1, "one"), std::make_pair(2, "two"),
@@ -155,7 +157,7 @@ TEST(MapTest, InsertManyMixedValidity) {
   EXPECT_EQ(map.size(), 2);
 }
 
-TEST(MapTest, IteratorValidityAfterErase) {
+TEST_F(MapTest, IteratorValidityAfterErase) {
   Map<int, std::string> map;
   map.insert({1, "one"});
   map.insert({2, "two"});
@@ -174,7 +176,7 @@ TEST(MapTest, IteratorValidityAfterErase) {
   EXPECT_TRUE(map.empty());
 }
 
-TEST(MapTest, EqualRangeClosestKeys) {
+TEST_F(MapTest, EqualRangeClosestKeys) {
   Map<int, std::string> map;
   map.insert({1, "one"});
   map.insert({3, "three"});
@@ -186,7 +188,7 @@ TEST(MapTest, EqualRangeClosestKeys) {
   EXPECT_EQ(range.second->first, 5);  // Upper bound
 }
 
-TEST(MapTest, StressLargeDataset) {
+TEST_F(MapTest, StressLargeDataset) {
   constexpr int n = 100000;
   Map<int, int> map;
   for (int i = 0; i < n; ++i) {
@@ -199,7 +201,7 @@ TEST(MapTest, StressLargeDataset) {
   }
 }
 
-TEST(MapTest, NestedMapMoveSemantics) {
+TEST_F(MapTest, NestedMapMoveSemantics) {
   using NestedMap = Map<int, Map<int, std::string>>;
   NestedMap outer;
   outer[1][1] = "one";
@@ -213,7 +215,7 @@ TEST(MapTest, NestedMapMoveSemantics) {
   EXPECT_EQ(moved_outer[1].at(2), "two");
 }
 
-TEST(MapTest, CustomComparatorReverseOrder) {
+TEST_F(MapTest, CustomComparatorReverseOrder) {
   Map<int, std::string, std::greater<int>> map;  // Reverse order
   map.insert({1, "one"});
   map.insert({2, "two"});
@@ -227,7 +229,7 @@ TEST(MapTest, CustomComparatorReverseOrder) {
   EXPECT_EQ(it->first, 1);
 }
 
-TEST(MapTest, ClearPopulatedMap) {
+TEST_F(MapTest, ClearPopulatedMap) {
   Map<int, std::string> map;
   map.insert({1, "one"});
   map.insert({2, "two"});
@@ -239,7 +241,7 @@ TEST(MapTest, ClearPopulatedMap) {
   EXPECT_EQ(map.begin(), map.end());
 }
 
-TEST(MapTest, EraseNonExistentKey) {
+TEST_F(MapTest, EraseNonExistentKey) {
   Map<int, std::string> map;
   map.insert({1, "one"});
   map.insert({2, "two"});
@@ -249,7 +251,7 @@ TEST(MapTest, EraseNonExistentKey) {
   EXPECT_EQ(map.size(), 2);
 }
 
-TEST(MapTest, LowerAndUpperBounds) {
+TEST_F(MapTest, LowerAndUpperBounds) {
   Map<int, std::string> map;
   map.insert({1, "one"});
   map.insert({3, "three"});
@@ -262,7 +264,7 @@ TEST(MapTest, LowerAndUpperBounds) {
   EXPECT_EQ(ub->first, 5);  // Upper bound should point to 5
 }
 
-TEST(MapTest, AtThrowsOnNonExistentKey) {
+TEST_F(MapTest, AtThrowsOnNonExistentKey) {
   Map<int, std::string> map;
   map.insert({1, "one"});
   map.insert({2, "two"});

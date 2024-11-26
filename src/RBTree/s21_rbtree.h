@@ -3,6 +3,7 @@
 
 #include <iterator>
 #include <memory>
+#include <type_traits>
 #include <utility>
 
 namespace s21 {
@@ -11,6 +12,15 @@ template <typename T, typename Comparator = std::less<T>>
 class RBTree;
 template <typename T>
 class ConstIterator;
+
+template <typename T>
+struct is_pair : std::false_type {};
+
+template <typename T1, typename T2>
+struct is_pair<std::pair<T1, T2>> : std::true_type {};
+
+template <typename T>
+inline constexpr bool is_pair_v = is_pair<T>::value;
 
 enum class Color { RED, BLACK };
 
@@ -376,8 +386,9 @@ class RBTree {
  private:
   void swapNode(Node* fNode, Node* sNode);
   Node* copyTree(Node* otherNode, Node* parentNode);
-  // void transplant(Node* u, Node* v);
+  void transplant(Node* u, Node* v);
   void deleteTree(Node* node);
+  void printNodeValue(const_reference value) const;
   void printTree(Node* node, int depth = 0) const;
   Node* find_min(Node* root) const;
   Node* find_max(Node* root) const;
@@ -906,6 +917,14 @@ RBTree<T, Comparator>::insertNonUniq(const value_type& value) {
 //   //   endNode_->parent_ = find_max(root_);
 //   // }
 // }
+//
+//
+
+//
+//
+//
+//
+//
 
 template <typename T, typename Comparator>
 void RBTree<T, Comparator>::erase(iterator pos) {
@@ -918,65 +937,63 @@ void RBTree<T, Comparator>::erase(iterator pos) {
   Node* nodeToDelete = pos.getCurNode();
   if (!nodeToDelete || nodeToDelete == endNode_) return;
 
-  Node* replacementNode = nullptr;
+  Node* y = nodeToDelete;  // Node to be actually removed
+  Node* x = nullptr;       // Child of y, possibly null
+  Color originalColor = y->color_;
 
-  // Case 1: Node has two children
-  if (nodeToDelete->left_ && nodeToDelete->right_) {
-    // Find the smallest node in right subtree and swap
-    replacementNode = find_min(nodeToDelete->right_);
-    swapNode(nodeToDelete, replacementNode);
-    nodeToDelete = replacementNode;
-  }
-
-  // Case 2: Node has at most one child
-  if (nodeToDelete->left_) {
-    replacementNode = nodeToDelete->left_;
+  if (nodeToDelete->left_ == nullptr) {
+    x = nodeToDelete->right_;
+    transplant(nodeToDelete, nodeToDelete->right_);
+  } else if (nodeToDelete->right_ == nullptr) {
+    x = nodeToDelete->left_;
+    transplant(nodeToDelete, nodeToDelete->left_);
   } else {
-    replacementNode = nodeToDelete->right_;
-  }
+    y = find_min(nodeToDelete->right_);
+    originalColor = y->color_;
+    x = y->right_;
 
-  // Replace nodeToDelete with child (if exists)
-  if (replacementNode && replacementNode != endNode_) {
-    replacementNode->parent_ = nodeToDelete->parent_;
-    if (nodeToDelete->parent_ == nullptr) {
-      root_ = replacementNode;
-    } else if (nodeToDelete == nodeToDelete->parent_->left_) {
-      nodeToDelete->parent_->left_ = replacementNode;
+    if (y->parent_ == nodeToDelete) {
+      if (x) x->parent_ = y;
     } else {
-      nodeToDelete->parent_->right_ = replacementNode;
+      transplant(y, y->right_);
+      y->right_ = nodeToDelete->right_;
+      if (y->right_) y->right_->parent_ = y;
     }
 
-    // If we deleted black, fix the tree
-    if (nodeToDelete->color_ == Color::BLACK) {
-      fixErase(replacementNode);
-    }
-  } else if (nodeToDelete->parent_ == nullptr) {
-    // Node is the root and has no children
-    root_ = nullptr;
-  } else {
-    // Node is a leaf and has no children
-    if (nodeToDelete->color_ == Color::BLACK) {
-      fixErase(nodeToDelete);
-    }
+    transplant(nodeToDelete, y);
+    y->left_ = nodeToDelete->left_;
+    if (y->left_) y->left_->parent_ = y;
+    y->color_ = nodeToDelete->color_;
+  }
 
-    if (nodeToDelete->parent_ != nullptr) {
-      if (nodeToDelete == nodeToDelete->parent_->left_) {
-        nodeToDelete->parent_->left_ = nullptr;
-      } else {
-        nodeToDelete->parent_->right_ = nullptr;
-      }
-    }
+  if (originalColor == Color::BLACK) {
+    fixErase(x);
   }
 
   delete nodeToDelete;
   --size_;
 
-  // End node: Only update if necessary
+  // Update endNode_
   if (root_) {
     Node* newMaxNode = find_max(root_);
-    if (endNode_->parent_ != newMaxNode) {
-      endNode_->parent_ = newMaxNode;
-    }
+    endNode_->parent_ = (newMaxNode == endNode_) ? nullptr : newMaxNode;
+  } else {
+    endNode_->parent_ = nullptr;
+  }
+}
+
+template <typename T, typename Comparator>
+void RBTree<T, Comparator>::transplant(Node* u, Node* v) {
+  if (u->parent_ == nullptr) {
+    root_ = v;
+  } else if (u == u->parent_->left_) {
+    u->parent_->left_ = v;
+  } else {
+    u->parent_->right_ = v;
+  }
+
+  if (v != nullptr) {
+    v->parent_ = u->parent_;
   }
 }
 
@@ -1105,7 +1122,7 @@ void RBTree<T, Comparator>::erase(iterator pos) {
 // }
 template <typename T, typename Comparator>
 void RBTree<T, Comparator>::fixErase(Node* node) {
-  while (node != root_ && node->color_ == Color::BLACK) {
+  while (node && node != root_ && node->color_ == Color::BLACK) {
     if (node == node->parent_->left_) {
       Node* sibling = node->parent_->right_;
 
@@ -1203,8 +1220,7 @@ void RBTree<T, Comparator>::fixErase(Node* node) {
       }
     }
   }
-
-  node->color_ = Color::BLACK;
+  if (node) node->color_ = Color::BLACK;
 }
 
 // template <typename T, typename Comparator>
@@ -1492,10 +1508,18 @@ void RBTree<T, Comparator>::swapNode(Node* fNode, Node* sNode) {
   if (!fNode || !sNode) return;
   if (fNode == endNode_ || sNode == endNode_) {
     if (fNode == endNode_) std::swap(fNode, sNode);
-    std::swap(fNode->value_, sNode->value_);
+    if constexpr (is_pair_v<T>) {
+      std::swap(fNode->value_.second, sNode->value_.second);
+    } else {
+      std::swap(fNode->value_, sNode->value_);
+    }
     return;
   }
-  std::swap(fNode->value_, sNode->value_);
+  if constexpr (is_pair_v<T>) {
+    std::swap(fNode->value_.second, sNode->value_.second);
+  } else {
+    std::swap(fNode->value_, sNode->value_);
+  }
   std::swap(fNode->color_, sNode->color_);
   if (fNode->parent_ == sNode) {
     std::swap(fNode, sNode);
@@ -1537,34 +1561,48 @@ void RBTree<T, Comparator>::deleteTree(Node* node) {
 }
 
 template <typename T, typename Comparator>
+void RBTree<T, Comparator>::printNodeValue(const_reference value) const {
+  if constexpr (is_pair_v<T>) {
+    // For std::pair, print both key and value
+    std::cout << "{" << value.first << ": " << value.second << "}";
+  } else {
+    // For non-pair types
+    std::cout << value;
+  }
+}
+
+template <typename T, typename Comparator>
 void RBTree<T, Comparator>::printTree(Node* node, int level) const {
   if (node == nullptr || node == endNode_) {
     if (node == endNode_) {
       std::cout << "endNode_->parent_: ";
       if (endNode_->parent_) {
-        std::cout << endNode_->parent_->value_;
+        printNodeValue(endNode_->parent_->value_);
       } else {
         std::cout << "nullptr";
       }
       std::cout << std::endl;
-      auto it = endNode_;
-      --it;
-      std::cout << "--endNode value: " << it->value_ << std::endl;
+
+      //   // Print value for the node before endNode_
+      //   auto it = endNode_;
+      //   --it;  // Assuming valid iterator implementation
+      //   std::cout << "--endNode value: ";
+      //   printNodeValue(it->value_);
+      //   std::cout << std::endl;
     }
     return;
   }
 
-  // Print right subtree first
   printTree(node->right_, level + 1);
+  // Indent based on tree level
+  for (int i = 0; i < level; ++i) std::cout << "  ";
 
-  // Print the current node
-  for (int i = 0; i < level; ++i) {
-    std::cout << "   ";
-  }
-  std::cout << node->value_ << " (" << (node->color_ == Color::RED ? "R" : "B")
-            << ")\n";
+  // Print current node's value
+  printNodeValue(node->value_);
+  std::cout << " (" << (node->color_ == Color::RED ? "R" : "B") << ")"
+            << std::endl;
 
-  // Print left subtree
+  // Recursively print left and right children
   printTree(node->left_, level + 1);
 }
 
@@ -1598,7 +1636,7 @@ RBTree<T, Comparator>::insert(const value_type& value) {
   fixInsert(newNode);
   if (root_ && endNode_) {
     Node* maxNode = find_max(root_);
-    if (maxNode) {
+    if (maxNode && maxNode != endNode_) {
       endNode_->parent_ = maxNode;
       endNode_->left_ = nullptr;
       maxNode->right_ = endNode_;

@@ -5,11 +5,16 @@
 
 namespace s21 {
 
-template <typename Key, typename T, typename Comparator = std::less<Key>>
+template <typename Key, typename T, typename Comparator>
 struct ValueComparator {
-  bool operator()(const std::pair<const Key, T>& val1,
-                  const std::pair<const Key, T>& val2) const {
-    return Comparator()(val1.first, val2.first);
+  Comparator comp_;  // Store the comparator
+
+  // Constructor should accept the comparator
+  explicit ValueComparator(Comparator comp) : comp_(comp) {}
+
+  bool operator()(const std::pair<const Key, T>& lhs,
+                  const std::pair<const Key, T>& rhs) const {
+    return comp_(lhs.first, rhs.first);  // Compare based on the key
   }
 };
 
@@ -178,9 +183,8 @@ class Map {
 
   // Observers
   key_compare key_comp() const { return comp_; }
-  value_compare value_comp() const {
-    return value_compare(comp_);
-  }  // Provides access to ValueComparator
+  value_compare value_comp() const { return value_compare(comp_); }
+  void printTree() const { tree_.printTree(); }
 
  private:
   key_compare comp_;
