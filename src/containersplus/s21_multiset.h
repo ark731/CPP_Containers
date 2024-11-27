@@ -18,31 +18,38 @@ class Multiset {
   using const_iterator = typename RBTree<key_type, key_compare>::const_iterator;
   using Node = RBTreeNode<key_type>;
 
-  // Constructors and Destructor
   Multiset() : comp_(), tree_(comp_) {}
   explicit Multiset(const key_compare& comp) : comp_(comp), tree_(comp) {}
   Multiset(const Multiset& other) : comp_(other.comp_), tree_(other.tree_) {}
   Multiset(Multiset&& other) noexcept
       : comp_(std::move(other.comp_)), tree_(std::move(other.tree_)) {}
   ~Multiset() = default;
+  Multiset(std::initializer_list<key_type> init_list) : comp_(), tree_(comp_) {
+    for (const auto& key : init_list) {
+      this->insert(key);
+    }
+  }
+  Multiset(std::initializer_list<key_type> init_list, const key_compare& comp)
+      : comp_(comp), tree_(comp_) {
+    for (const auto& key : init_list) {
+      this->insert(key);
+    }
+  }
 
   Multiset& operator=(Multiset other) noexcept {
     swap(other);
     return *this;
   }
 
-  // Iterators
   iterator begin() { return tree_.begin(); }
   const_iterator begin() const { return tree_.begin(); }
   iterator end() { return tree_.end(); }
   const_iterator end() const { return tree_.end(); }
 
-  // Capacity
   bool empty() const noexcept { return tree_.empty(); }
   size_type size() const noexcept { return tree_.size(); }
   size_type max_size() const noexcept { return tree_.max_size(); }
 
-  // Modifiers
   iterator insert(const key_type& key) {
     return tree_.insertNonUniq(key).first;
   }
@@ -51,12 +58,9 @@ class Multiset {
   std::vector<iterator> insert_many(Args&&... args) {
     static_assert((std::is_constructible_v<key_type, Args&&> && ...),
                   "All arguments must be constructible to key_type");
-
     std::vector<iterator> result;
     result.reserve(sizeof...(args));
-
     std::vector<iterator> inserted_iterators;
-
     try {
       (
           [&] {
@@ -73,8 +77,12 @@ class Multiset {
       }
       throw;
     }
-
     return result;
+  }
+
+  void merge(Multiset& other) {
+    if (this == &other) return;
+    tree_.mergeNonUniq(other.tree_);
   }
 
   void erase(iterator pos) { tree_.erase(pos); }
@@ -107,14 +115,11 @@ class Multiset {
   void clear() noexcept { tree_.clear(); }
   void swap(Multiset& other) noexcept { tree_.swap(other.tree_); }
 
-  // Lookup
-
   size_type count(const key_type& key) const {
     auto range = equal_range(key);
     return std::distance(range.first, range.second);
   }
 
-  // Const versions (already implemented)
   const_iterator find(const key_type& key) const {
     auto it = tree_.find(key);
     return it != tree_.end() ? it : end();
@@ -135,7 +140,6 @@ class Multiset {
     return {lower_bound(key), upper_bound(key)};
   }
 
-  // Non-const versions
   iterator find(const key_type& key) {
     auto it = tree_.find(key);
     return it != tree_.end() ? it : end();
@@ -155,7 +159,6 @@ class Multiset {
     return {lower_bound(key), upper_bound(key)};
   }
 
-  // Observers
   key_compare key_comp() const { return comp_; }
   void printTree() const { tree_.printTree(); }
 

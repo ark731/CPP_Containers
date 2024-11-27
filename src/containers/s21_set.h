@@ -19,30 +19,37 @@ class Set {
   using const_iterator = typename RBTree<key_type, key_compare>::const_iterator;
   using Node = RBTreeNode<key_type>;
 
-  // Constructors and Destructor
   Set() : tree_() {}
   explicit Set(const key_compare& comp) : tree_(comp) {}
   Set(const Set& other) : tree_(other.tree_) {}
   Set(Set&& other) noexcept : tree_(std::move(other.tree_)) {}
   ~Set() = default;
+  Set(std::initializer_list<key_type> init_list) : comp_(), tree_(comp_) {
+    for (const auto& key : init_list) {
+      this->insert(key);
+    }
+  }
+  Set(std::initializer_list<key_type> init_list, const key_compare& comp)
+      : comp_(comp), tree_(comp_) {
+    for (const auto& key : init_list) {
+      this->insert(key);
+    }
+  }
 
   Set& operator=(Set other) noexcept {
     swap(other);
     return *this;
   }
 
-  // Iterators
   iterator begin() { return tree_.begin(); }
   const_iterator begin() const { return tree_.begin(); }
   iterator end() { return tree_.end(); }
   const_iterator end() const { return tree_.end(); }
 
-  // Capacity
   bool empty() const noexcept { return tree_.empty(); }
   size_type size() const noexcept { return tree_.size(); }
   size_type max_size() const noexcept { return tree_.max_size(); }
 
-  // Modifiers
   std::pair<iterator, bool> insert(const key_type& key) {
     std::vector<iterator> rollback_nodes;
     try {
@@ -63,12 +70,9 @@ class Set {
   std::vector<std::pair<iterator, bool>> insert_many(Args&&... args) {
     static_assert((std::is_constructible_v<key_type, Args&&> && ...),
                   "All arguments must be constructible to key_type");
-
     std::vector<std::pair<iterator, bool>> result;
     result.reserve(sizeof...(args));
-
     std::vector<iterator> inserted_iterators;
-
     try {
       (
           [&] {
@@ -85,12 +89,11 @@ class Set {
       }
       throw;
     }
-
     return result;
   }
 
   void merge(Set& other) {
-    if (this == &other) return;  // Protect against self-merge
+    if (this == &other) return;
     tree_.merge(other.tree_);
   }
 
@@ -106,11 +109,10 @@ class Set {
   void clear() noexcept { tree_.clear(); }
   void swap(Set& other) noexcept { tree_.swap(other.tree_); }
 
-  // Lookup
   size_type count(const key_type& key) const {
     return find(key) != end() ? 1 : 0;
   }
-  // Const versions (already implemented)
+
   const_iterator find(const key_type& key) const {
     auto it = tree_.find(key);
     return it != tree_.end() ? it : end();
@@ -131,7 +133,6 @@ class Set {
     return {lower_bound(key), upper_bound(key)};
   }
 
-  // Non-const versions
   iterator find(const key_type& key) {
     auto it = tree_.find(key);
     return it != tree_.end() ? it : end();
@@ -151,7 +152,6 @@ class Set {
     return {lower_bound(key), upper_bound(key)};
   }
 
-  // Observers
   Comparator key_comp() const { return comp_; }
 
   void printTree() const { tree_.printTree(); }

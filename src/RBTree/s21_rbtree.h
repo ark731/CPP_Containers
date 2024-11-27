@@ -32,7 +32,6 @@ struct RBTreeNode {
   RBTreeNode* parent_ = nullptr;
   Color color_ = Color::RED;
 
-  // Constructor for regular nodes
   RBTreeNode(const T& value, RBTreeNode* parent = nullptr,
              Color color = Color::RED)
       : value_(value),
@@ -41,7 +40,6 @@ struct RBTreeNode {
         parent_(parent),
         color_(color) {}
 
-  // Constructor for end node (doesn't initialize value_)
   RBTreeNode(RBTreeNode* parent = nullptr)
       : left_(nullptr),
         right_(nullptr),
@@ -193,33 +191,6 @@ Iterator<T>& Iterator<T>::operator++() {
   return *this;
 }
 
-// template <typename T>
-// Iterator<T>& Iterator<T>::operator--() {
-//   if (current_node_ == nullptr) {
-//     current_node_ = end_node_;
-//     return *this;
-//   }
-//   if (current_node_ == end_node_) {
-//     current_node_ = getMaxNode();
-//     return *this;
-//   }
-//   if (current_node_->left_) {
-//     current_node_ = current_node_->left_;
-//     while (current_node_->right_) {
-//       current_node_ = current_node_->right_;
-//     }
-//   } else {
-//     Node* parent = current_node_->parent_;
-//     while (parent && current_node_ == parent->left_) {
-//       current_node_ = parent;
-//       parent = parent->parent_;
-//     }
-//     current_node_ = parent ? parent : end_node_;
-//   }
-
-//   return *this;
-// }
-
 template <typename T>
 Iterator<T>& Iterator<T>::operator--() {
   if (current_node_ == nullptr) {
@@ -255,8 +226,6 @@ Iterator<T> Iterator<T>::operator--(int) {
   --(*this);
   return temp;
 }
-
-///
 
 ///////////////////////////////////////
 // -------- CONST ITERATOR --------- //
@@ -324,8 +293,6 @@ ConstIterator<T> ConstIterator<T>::prev() const {
   --temp;
   return temp;
 }
-
-////
 
 ///////////////////////////////////////
 // -------- RED-BLACK TREE --------- //
@@ -410,13 +377,11 @@ RBTree<T, Comparator>::RBTree()
 template <typename T, typename Comparator>
 RBTree<T, Comparator>::RBTree(const RBTree& other)
     : root_(nullptr),
-      endNode_(new Node(nullptr)),  // Create a fresh endNode_
+      endNode_(new Node(nullptr)),
       size_(other.size_),
       comp_(other.comp_) {
   if (other.root_) {
     root_ = copyTree(other.root_, nullptr);
-
-    // Reconnect endNode_
     Node* rightmost = root_;
     while (rightmost && rightmost->right_) {
       rightmost = rightmost->right_;
@@ -455,7 +420,7 @@ RBTree<T, Comparator>::~RBTree() {
 template <typename T, typename Comparator>
 RBTree<T, Comparator>& RBTree<T, Comparator>::operator=(const RBTree& other) {
   if (this != &other) {
-    clear();  // Free existing resources
+    clear();
     root_ = copyTree(other.root_, nullptr);
     size_ = other.size_;
     if (!endNode_) {
@@ -668,118 +633,14 @@ void RBTree<T, Comparator>::mergeNonUniq(RBTree& other) {
   bool merged = false;
   if (other.size_ > 0) {
     for (auto it = other.begin(); it != other.end(); ++it) {
-      insertNonUniq(*it);  // method for non-unique
+      insertNonUniq(*it);
       merged = true;
     }
   }
   if (merged) {
-    other.clear();  // Clear other tree only if merge happened!!
+    other.clear();
   }
 }
-
-// template <typename T, typename Comparator>
-// std::pair<typename RBTree<T, Comparator>::iterator, bool>
-// RBTree<T, Comparator>::insert(const value_type& value) {
-//   // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//   std::cout << "Inserting value: " << value << std::endl;
-//   // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-//   Node* newNode = new Node(value);  // Create new node with value
-
-//   if (root_ == nullptr) {
-//     // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//     std::cout << "Tree is empty. Setting root and endNode_." << std::endl;
-//     // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-//     root_ = newNode;              // If tree is empty, new node becomes
-//     root root_->parent_ = endNode_;    // Connect root to sentinel
-//     endNode_->parent_ = newNode;  // Set endNode to point to new root
-//   } else {
-//     Node* node = root_;
-//     while (node != endNode_) {
-//       // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//       std::cout << "Traversing tree: current node = " << node->value_
-//                 << std::endl;
-//       // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-//       if (comp_(value, node->value_)) {
-//         if (node->left_ == nullptr || node->left_ == endNode_) {
-//           node->left_ = newNode;
-//           newNode->parent_ = node;
-//           break;
-//         }
-//         node = node->left_;
-//       } else if (comp_(node->value_, value)) {
-//         if (node->right_ == nullptr || node->right_ == endNode_) {
-//           node->right_ = newNode;
-//           newNode->parent_ = node;
-//           break;
-//         }
-//         node = node->right_;
-//       } else {
-//         // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//         std::cout << "Value already exists. Skipping insertion." <<
-//         std::endl;
-//         // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-//         delete newNode;  // Value already exists, no insertion
-//         return std::make_pair(iterator(node, endNode_), false);
-//       }
-//     }
-//   }
-
-//   // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//   std::cout << "Node inserted. Launching fixInsert." << std::endl;
-//   // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-//   fixInsert(newNode);
-
-//   // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//   std::cout << "Insertion complete. endNode_->parent_: ";
-//   if (endNode_->parent_) {
-//     std::cout << endNode_->parent_->value_;
-//   } else {
-//     std::cout << "nullptr";
-//   }
-//   std::cout << std::endl;
-//   std::cout << "Printing tree: " << std::endl;
-//   printTree(root_);
-//   // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-//   ++size_;
-//   return std::make_pair(iterator(newNode, endNode_), true);
-// }
-
-// template <typename T, typename Comparator>
-// std::pair<typename RBTree<T, Comparator>::iterator, bool>
-// RBTree<T, Comparator>::insertNonUniq(const value_type& value) {
-//   Node* newNode = new Node(value);
-//   if (root_ == nullptr) {
-//     root_ = newNode;
-//     root_->parent_ = endNode_;    // Connect root to sentinel
-//     endNode_->parent_ = newNode;  // Set endNode to point to new root
-//   } else {
-//     Node* node = root_;
-//     while (node != endNode_) {
-//       if (comp_(value, node->value_)) {
-//         if (node->left_ == nullptr || node->left_ == endNode_) {
-//           node->left_ = newNode;
-//           newNode->parent_ = node;
-//           break;
-//         }
-//         node = node->left_;
-//       } else {
-//         if (node->right_ == nullptr || node->right_ == endNode_) {
-//           node->right_ = newNode;
-//           newNode->parent_ = node;
-//           break;
-//         }
-//         node = node->right_;
-//       }
-//     }
-//     if (comp_(endNode_->parent_->value_, newNode->value_)) {
-//       endNode_->parent_ = find_max(root_);
-//     }
-//   }
-
-//   fixInsert(newNode);  // Rebalance the tree
-//   ++size_;
-//   return std::make_pair(iterator(newNode, endNode_), true);
-// }
 
 template <typename T, typename Comparator>
 std::pair<typename RBTree<T, Comparator>::iterator, bool>
@@ -818,114 +679,6 @@ RBTree<T, Comparator>::insertNonUniq(const value_type& value) {
   return std::make_pair(iterator(newNode), true);
 }
 
-// template <typename T, typename Comparator>
-// void RBTree<T, Comparator>::fixInsert(Node* node) {
-//   // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//   std::cout << "Fixing insertion for node: " << node->value_ << std::endl;
-//   // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-//   while (node != root_ && node->parent_ != endNode_ &&
-//   node->parent_->isRed()) {
-//     // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//     std::cout << "At node: " << node->value_
-//               << ", parent: " << node->parent_->value_ << ", grandparent:
-//               ";
-//     if (node->parent_->parent_) {
-//       std::cout << node->parent_->parent_->value_;
-//     } else {
-//       std::cout << "nullptr";
-//     }
-//     std::cout << std::endl;
-//     // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-//     if (node->parent_ == node->parent_->parent_->left_) {
-//       // If parent is left child of grandparent
-//       Node* uncle = node->parent_->parent_->right_;
-//       if (uncle && uncle != endNode_ && uncle->isRed()) {
-//         // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//         std::cout << "Case 1: Recoloring and moving up." << std::endl;
-//         // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-//         // Case 1: Uncle is red, recolor and move up
-//         node->parent_->color_ = Color::BLACK;
-//         uncle->color_ = Color::BLACK;
-//         node->parent_->parent_->color_ = Color::RED;
-//         node = node->parent_->parent_;
-//       } else {
-//         // Case 2: Uncle is black
-//         if (node == node->parent_->right_) {
-//           // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//           std::cout << "Case 2a: Left rotation needed." << std::endl;
-
-//           // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-//           // Case 2a: Node is right child, need to rotate left
-//           node = node->parent_;
-//           leftRotate(node);
-//         }
-
-//         // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//         std::cout << "Case 2b: Right rotation needed." << std::endl;
-//         // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-//         // Case 2b: Node is left child, need to rotate right
-//         node->parent_->color_ = Color::BLACK;
-//         node->parent_->parent_->color_ = Color::RED;
-//         rightRotate(node->parent_->parent_);
-//       }
-//     } else {
-//       // mirror of the above case
-//       Node* uncle = node->parent_->parent_->left_;
-//       if (uncle && uncle != endNode_ && uncle->isRed()) {
-//         // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//         std::cout << "Case 1 (mirror): Recoloring and moving up." <<
-//         std::endl;
-//         // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-//         // Case 1:
-//         node->parent_->color_ = Color::BLACK;
-//         uncle->color_ = Color::BLACK;
-//         node->parent_->parent_->color_ = Color::RED;
-//         node = node->parent_->parent_;
-//       } else {
-//         // Case 2:
-//         if (node == node->parent_->left_) {
-//           // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//           std::cout << "Case 2a (mirror): Right rotation needed." <<
-//           std::endl;
-//           // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-//           // Case 2a:
-//           node = node->parent_;
-//           rightRotate(node);
-//         }
-
-//         // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//         std::cout << "Case 2b (mirror): Left rotation needed." <<
-//         std::endl;
-//         // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-//         // Case 2b:
-//         node->parent_->color_ = Color::BLACK;
-//         node->parent_->parent_->color_ = Color::RED;
-//         leftRotate(node->parent_->parent_);
-//       }
-//     }
-//   }
-//   root_->color_ = Color::BLACK;  // Root is always black!
-
-//   // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//   // std::cout << "FixInsert complete. Updating endNode_->parent_." <<
-//   // std::endl;
-//   // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-//   // if (endNode_->parent_ != nullptr) {
-//   //   endNode_->parent_ = find_max(root_);
-//   // }
-//   // if (endNode_ && root_) {
-//   //   endNode_->parent_ = find_max(root_);
-//   // }
-// }
-//
-//
-
-//
-//
-//
-//
-//
-
 template <typename T, typename Comparator>
 void RBTree<T, Comparator>::erase(iterator pos) {
   if (!pos.isValid()) {
@@ -937,8 +690,8 @@ void RBTree<T, Comparator>::erase(iterator pos) {
   Node* nodeToDelete = pos.getCurNode();
   if (!nodeToDelete || nodeToDelete == endNode_) return;
 
-  Node* y = nodeToDelete;  // Node to be actually removed
-  Node* x = nullptr;       // Child of y, possibly null
+  Node* y = nodeToDelete;
+  Node* x = nullptr;
   Color originalColor = y->color_;
 
   if (nodeToDelete->left_ == nullptr) {
@@ -973,7 +726,6 @@ void RBTree<T, Comparator>::erase(iterator pos) {
   delete nodeToDelete;
   --size_;
 
-  // Update endNode_
   if (root_) {
     Node* newMaxNode = find_max(root_);
     endNode_->parent_ = (newMaxNode == endNode_) ? nullptr : newMaxNode;
@@ -996,130 +748,6 @@ void RBTree<T, Comparator>::transplant(Node* u, Node* v) {
     v->parent_ = u->parent_;
   }
 }
-
-// template <typename T, typename Comparator>
-// void RBTree<T, Comparator>::erase(iterator pos) {
-//   if (pos == end()) {
-//     return;  // Cannot erase the end iterator
-//   }
-
-//   Node* nodeToErase = pos.getCurNode();
-//   Node* x = nullptr;
-//   Node* y = nodeToErase;  // y will be the node to be unlinked from the tree
-//   Color yOriginalColor = y->color_;
-
-//   if (nodeToErase->left_ == nullptr) {
-//     x = nodeToErase->right_;
-//     transplant(nodeToErase, nodeToErase->right_);
-//   } else if (nodeToErase->right_ == nullptr) {
-//     x = nodeToErase->left_;
-//     transplant(nodeToErase, nodeToErase->left_);
-//   } else {
-//     y = find_min(nodeToErase->right_);
-//     yOriginalColor = y->color_;
-//     x = y->right_;
-//     if (y->parent_ == nodeToErase) {
-//       x->parent_ = y;
-//     } else {
-//       transplant(y, y->right_);
-//       y->right_ = nodeToErase->right_;
-//       y->right_->parent_ = y;
-//     }
-//     transplant(nodeToErase, y);
-//     y->left_ = nodeToErase->left_;
-//     y->left_->parent_ = y;
-//     y->color_ = nodeToErase->color_;
-//   }
-
-//   if (yOriginalColor == Color::BLACK) {
-//     fixErase(x);
-//   }
-
-//   delete nodeToErase;
-//   --size_;
-// }
-
-// template <typename T, typename Comparator>
-// void RBTree<T, Comparator>::transplant(Node* u, Node* v) {
-//   if (u->parent_ == nullptr) {
-//     root_ = v;
-//   } else if (u == u->parent_->left_) {
-//     u->parent_->left_ = v;
-//   } else {
-//     u->parent_->right_ = v;
-//   }
-//   if (v != nullptr) {
-//     v->parent_ = u->parent_;
-//   }
-// }
-
-// template <typename T, typename Comparator>
-// void RBTree<T, Comparator>::fixErase(Node* x) {
-//   while (x != root_ && (x == nullptr || x->isBlack())) {
-//     if (x == x->parent_->left_) {
-//       Node* w = x->parent_->right_;
-//       if (w->isRed()) {
-//         w->color_ = Color::BLACK;
-//         x->parent_->color_ = Color::RED;
-//         leftRotate(x->parent_);
-//         w = x->parent_->right_;
-//       }
-//       if ((w->left_ == nullptr || w->left_->isBlack()) &&
-//           (w->right_ == nullptr || w->right_->isBlack())) {
-//         w->color_ = Color::RED;
-//         x = x->parent_;
-//       } else {
-//         if (w->right_ == nullptr || w->right_->isBlack()) {
-//           if (w->left_ != nullptr) {
-//             w->left_->color_ = Color::BLACK;
-//           }
-//           w->color_ = Color::RED;
-//           rightRotate(w);
-//           w = x->parent_->right_;
-//         }
-//         w->color_ = x->parent_->color_;
-//         x->parent_->color_ = Color::BLACK;
-//         if (w->right_ != nullptr) {
-//           w->right_->color_ = Color::BLACK;
-//         }
-//         leftRotate(x->parent_);
-//         x = root_;
-//       }
-//     } else {
-//       Node* w = x->parent_->left_;
-//       if (w->isRed()) {
-//         w->color_ = Color::BLACK;
-//         x->parent_->color_ = Color::RED;
-//         rightRotate(x->parent_);
-//         w = x->parent_->left_;
-//       }
-//       if ((w->right_ == nullptr || w->right_->isBlack()) &&
-//           (w->left_ == nullptr || w->left_->isBlack())) {
-//         w->color_ = Color::RED;
-//         x = x->parent_;
-//       } else {
-//         if (w->left_ == nullptr || w->left_->isBlack()) {
-//           if (w->right_ != nullptr) {
-//             w->right_->color_ = Color::BLACK;
-//           }
-//           w->color_ = Color::RED;
-//           leftRotate(w);
-//           w = x->parent_->left_;
-//         }
-//         w->color_ = x->parent_->color_;
-//         x->parent_->color_ = Color::BLACK;
-//         if (w->left_ != nullptr) {
-//           w->left_->color_ = Color::BLACK;
-//         }
-//         rightRotate(x->parent_);
-//         x = root_;
-//       }
-//     }
-//   }
-//   if (x != nullptr) {
-//     x->color_ = Color::BLACK;
-//   }
-// }
 template <typename T, typename Comparator>
 void RBTree<T, Comparator>::fixErase(Node* node) {
   while (node && node != root_ && node->color_ == Color::BLACK) {
@@ -1127,15 +755,13 @@ void RBTree<T, Comparator>::fixErase(Node* node) {
       Node* sibling = node->parent_->right_;
 
       if (sibling->color_ == Color::RED) {
-        // Case 1: Sibling is red, rotate
         sibling->color_ = Color::BLACK;
         node->parent_->color_ = Color::RED;
         leftRotate(node->parent_);
         sibling = node->parent_->right_;
-        break;  // DELETE PROBABLY
+        break;
       }
 
-      // Case 2: Both sibling's children are black or null
       if ((!sibling->left_ || sibling->left_ == endNode_ ||
            sibling->left_->color_ == Color::BLACK) &&
           (!sibling->right_ || sibling->right_ == endNode_ ||
@@ -1145,17 +771,15 @@ void RBTree<T, Comparator>::fixErase(Node* node) {
       } else {
         if (sibling->right_ == nullptr || sibling->right_ == endNode_ ||
             sibling->right_->color_ == Color::BLACK) {
-          // Case 3: Sibling's left child is red, right is black
           if (sibling->left_ && sibling->left_ != endNode_) {
             sibling->left_->color_ = Color::BLACK;
           }
           sibling->color_ = Color::RED;
           rightRotate(sibling);
           sibling = node->parent_->right_;
-          break;  // DELETE PROBABLY
+          break;
         }
 
-        // Case 4: Sibling's right child is red
         sibling->color_ = node->parent_->color_;
         node->parent_->color_ = Color::BLACK;
         if (sibling->right_ && sibling->right_ != endNode_) {
@@ -1165,19 +789,16 @@ void RBTree<T, Comparator>::fixErase(Node* node) {
         node = root_;
       }
     } else {
-      // Symmetric to the above
       Node* sibling = node->parent_->left_;
 
       if (sibling->color_ == Color::RED) {
-        // Case 1: Sibling is red, rotate
         sibling->color_ = Color::BLACK;
         node->parent_->color_ = Color::RED;
         rightRotate(node->parent_);
         sibling = node->parent_->left_;
-        break;  // DELETE PROBABLY
+        break;
       }
 
-      // Case 2: Both sibling's children are black or null
       if ((!sibling->right_ || sibling->right_ == endNode_ ||
            sibling->right_->color_ == Color::BLACK) &&
           (!sibling->left_ || sibling->left_ == endNode_ ||
@@ -1187,17 +808,15 @@ void RBTree<T, Comparator>::fixErase(Node* node) {
       } else {
         if (sibling->left_ == nullptr || sibling->left_ == endNode_ ||
             sibling->left_->color_ == Color::BLACK) {
-          // Case 3: Sibling's right child is red, left is black
           if (sibling->right_ && sibling->right_ != endNode_) {
             sibling->right_->color_ = Color::BLACK;
           }
           sibling->color_ = Color::RED;
           leftRotate(sibling);
           sibling = node->parent_->left_;
-          break;  // DELETE PROBABLY
+          break;
         }
 
-        // Case 4: Sibling's left child is red
         sibling->color_ = node->parent_->color_;
         node->parent_->color_ = Color::BLACK;
         if (sibling->left_ && sibling->left_ != endNode_) {
@@ -1209,13 +828,10 @@ void RBTree<T, Comparator>::fixErase(Node* node) {
     }
 
     if (node != nullptr && node == endNode_) {
-      // Find the new maximum node after deletion
       Node* newMaxNode = find_max(root_);
       if (newMaxNode != nullptr) {
-        // Adjust endNode's parent to point to the new maximum node
         endNode_->parent_ = newMaxNode;
       } else {
-        // If the tree is empty, reset endNode to nullptr
         endNode_->parent_ = nullptr;
       }
     }
@@ -1223,166 +839,8 @@ void RBTree<T, Comparator>::fixErase(Node* node) {
   if (node) node->color_ = Color::BLACK;
 }
 
-// template <typename T, typename Comparator>
-// void RBTree<T, Comparator>::fixErase(Node* node) {
-//   // // // DELETE vvvvvvvv
-//   std::cout << "Node: " << node << ", Parent: " << node->parent_ <<
-//   std::endl;
-//   // // // DELETE ^^^^^^
-//   while (node != root_ && node->color_ == Color::BLACK) {
-//     if (node == node->parent_->left_) {
-//       Node* sibling = node->parent_->right_;
-//       if (!sibling || sibling == endNode_) {
-//         // Handle null or endNode case
-//         node = root_;
-//         continue;
-//       }
-
-//       if (sibling->color_ == Color::RED) {
-//         // Case 1: Sibling is red, rotate
-//         sibling->color_ = Color::BLACK;
-//         node->parent_->color_ = Color::RED;
-//         leftRotate(node->parent_);
-//         sibling = node->parent_->right_;
-//       }
-
-//       if (sibling->left_ == nullptr || sibling->left_ == endNode_ ||
-//           sibling->left_->color_ == Color::BLACK) {
-//         if (sibling->right_ == nullptr || sibling->right_ == endNode_ ||
-//             sibling->right_->color_ == Color::BLACK) {
-//           // Case 2: Both of sibling's children are black or null
-//           sibling->color_ = Color::RED;
-//           node = node->parent_;
-//         } else {
-//           if (sibling->right_ == nullptr || sibling->right_ == endNode_ ||
-//               sibling->right_->color_ == Color::BLACK) {
-//             // Case 3: Sibling's left child is red, right is black
-//             sibling->left_->color_ = Color::BLACK;
-//             sibling->color_ = Color::RED;
-//             rightRotate(sibling);
-//             sibling = node->parent_->right_;
-//           }
-//           // Case 4: Sibling's right child is red
-//           sibling->color_ = node->parent_->color_;
-//           node->parent_->color_ = Color::BLACK;
-//           if (sibling->right_ != endNode_ && sibling->right_ != nullptr) {
-//             sibling->right_->color_ = Color::BLACK;
-//           }
-//           leftRotate(node->parent_);
-//           node = root_;
-//         }
-//       } else {
-//         // Case 5: Sibling's left child is red
-//         sibling->color_ = node->parent_->color_;
-//         node->parent_->color_ = Color::BLACK;
-//         if (sibling->left_ != nullptr && sibling->left_ != endNode_) {
-//           sibling->left_->color_ = Color::BLACK;
-//         }
-//         leftRotate(node->parent_);
-//         node = root_;
-//       }
-//     } else {
-//       // Symmetric to the above
-//       Node* sibling = node->parent_->left_;
-
-//       if (sibling->color_ == Color::RED) {
-//         // Case 1:
-//         sibling->color_ = Color::BLACK;
-//         node->parent_->color_ = Color::RED;
-//         rightRotate(node->parent_);
-//         sibling = node->parent_->left_;
-//       }
-
-//       if (sibling->right_ == nullptr || sibling->right_ == endNode_ ||
-//           sibling->right_->color_ == Color::BLACK) {
-//         if (sibling->left_ == nullptr || sibling->left_ == endNode_ ||
-//             sibling->left_->color_ == Color::BLACK) {
-//           // Case 2:
-//           sibling->color_ = Color::RED;
-//           node = node->parent_;
-//         } else {
-//           if (sibling->left_->color_ == Color::BLACK) {
-//             // Case 3:
-//             sibling->right_->color_ = Color::BLACK;
-//             sibling->color_ = Color::RED;
-//             leftRotate(sibling);
-//             sibling = node->parent_->left_;
-//           }
-
-//           // Case 4:
-//           sibling->color_ = node->parent_->color_;
-//           node->parent_->color_ = Color::BLACK;
-//           if (sibling->left_ != nullptr && sibling->left_ != endNode_) {
-//             sibling->left_->color_ = Color::BLACK;
-//           }
-//           rightRotate(node->parent_);
-//           node = root_;
-//         }
-//       } else {
-//         // Case 5:
-//         sibling->color_ = node->parent_->color_;
-//         node->parent_->color_ = Color::BLACK;
-//         if (sibling->right_ != nullptr && sibling->right_ != endNode_) {
-//           sibling->right_->color_ = Color::BLACK;
-//         }
-//         rightRotate(node->parent_);
-//         node = root_;
-//       }
-//     }
-
-//     if (node != nullptr && node == endNode_) {
-//       // Find the new maximum node after deletion
-//       Node* newMaxNode = find_max(root_);
-//       if (newMaxNode != nullptr) {
-//         // Adjust endNode's parent to point to the new maximum node
-//         endNode_->parent_ = newMaxNode;
-//       } else {
-//         // If the tree is empty, reset endNode to nullptr
-//         endNode_->parent_ = nullptr;
-//       }
-//     }
-//   }
-
-//   node->color_ = Color::BLACK;
-// }
-
-// template <typename T, typename Comparator>
-// void RBTree<T, Comparator>::leftRotate(Node* node) {
-//   // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//   std::cout << "Left rotating at node: " << node->value_ << std::endl;
-//   std::cout << "Before rotation: \n";
-//   printTree(root_);
-//   // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-//   Node* rightChild = node->right_;
-//   node->right_ = rightChild->left_;
-//   if (rightChild->left_) {
-//     rightChild->left_->parent_ = node;
-//   }
-//   rightChild->parent_ = node->parent_;
-//   if (!node->parent_) {
-//     root_ = rightChild;
-//   } else if (node == node->parent_->left_) {
-//     node->parent_->left_ = rightChild;
-//   } else {
-//     node->parent_->right_ = rightChild;
-//   }
-//   rightChild->left_ = node;
-//   node->parent_ = rightChild;
-
-//   // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-//   std::cout << "Left rotation complete. New root: " << root_->value_
-//             << std::endl;
-//   std::cout << "After rotation: \n";
-//   printTree(root_);
-//   // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
-// }
-
 template <typename T, typename Comparator>
 void RBTree<T, Comparator>::leftRotate(Node* node) {
-  //   std::cout << "Left rotating at node: " << node->value_ << std::endl;
-  //   std::cout << "Before rotation: \n";
-  //   printTree(root_);
-
   Node* rightChild = node->right_;
   if (!rightChild) {
     std::cerr << "Error: Attempted left rotation with a null right child."
@@ -1390,40 +848,26 @@ void RBTree<T, Comparator>::leftRotate(Node* node) {
     return;
   }
 
-  // Step 1: Reassign node's right child to rightChild's left child
   node->right_ = rightChild->left_;
   if (rightChild->left_) {
     rightChild->left_->parent_ = node;
   }
 
-  // Step 2: Reassign rightChild's parent to node's parent
   rightChild->parent_ = node->parent_;
   if (!node->parent_) {
-    // If node is the root, update root
     root_ = rightChild;
   } else if (node == node->parent_->left_) {
-    // If node is a left child
     node->parent_->left_ = rightChild;
   } else {
-    // If node is a right child
     node->parent_->right_ = rightChild;
   }
 
-  // Step 3: Make node the left child of rightChild
   rightChild->left_ = node;
   node->parent_ = rightChild;
-
-  //   std::cout << "Left rotation complete. New root: " << root_->value_
-  //             << std::endl;
-  //   std::cout << "After rotation: \n";
-  //   printTree(root_);
 }
 
 template <typename T, typename Comparator>
 void RBTree<T, Comparator>::rightRotate(Node* node) {
-  //   // // // DELETE DELETE DELETE   ↓↓↓↓↓↓
-  //   std::cout << "Right rotating at node: " << node->value_ << std::endl;
-  //   // // // DELETE DELETE DELETE   ↑↑↑↑↑↑
   Node* leftChild = node->left_;
   node->left_ = leftChild->right_;
   if (leftChild->right_) {
@@ -1439,8 +883,6 @@ void RBTree<T, Comparator>::rightRotate(Node* node) {
   }
   leftChild->right_ = node;
   node->parent_ = leftChild;
-  //   std::cout << "Right rotation complete. New root: " << root_->value_
-  //             << std::endl;
 }
 
 template <typename T, typename Comparator>
@@ -1449,7 +891,6 @@ void RBTree<T, Comparator>::clear() {
     deleteTree(root_);
     root_ = nullptr;
   }
-  // Reset end node to initial state
   endNode_->parent_ = nullptr;
   endNode_->left_ = nullptr;
   endNode_->right_ = nullptr;
@@ -1467,7 +908,6 @@ template <typename T, typename Comparator>
 typename RBTree<T, Comparator>::Node* RBTree<T, Comparator>::find_min(
     Node* root) const {
   if (root == nullptr) return endNode_;
-  // Traverse to leftmost node.
   while (root->left_ != nullptr) {
     root = root->left_;
   }
@@ -1478,7 +918,6 @@ template <typename T, typename Comparator>
 typename RBTree<T, Comparator>::Node* RBTree<T, Comparator>::find_max(
     Node* root) const {
   if (root == nullptr) return endNode_;
-  // Traverse to rightmost node.
   while (root->right_ != endNode_ && root->right_ != nullptr) {
     root = root->right_;
   }
@@ -1553,7 +992,7 @@ void RBTree<T, Comparator>::swapNode(Node* fNode, Node* sNode) {
 
 template <typename T, typename Comparator>
 void RBTree<T, Comparator>::deleteTree(Node* node) {
-  if (node && node != endNode_) {  // Skip endNode_
+  if (node && node != endNode_) {
     deleteTree(node->left_);
     deleteTree(node->right_);
     delete node;
@@ -1563,10 +1002,8 @@ void RBTree<T, Comparator>::deleteTree(Node* node) {
 template <typename T, typename Comparator>
 void RBTree<T, Comparator>::printNodeValue(const_reference value) const {
   if constexpr (is_pair_v<T>) {
-    // For std::pair, print both key and value
     std::cout << "{" << value.first << ": " << value.second << "}";
   } else {
-    // For non-pair types
     std::cout << value;
   }
 }
@@ -1582,27 +1019,15 @@ void RBTree<T, Comparator>::printTree(Node* node, int level) const {
         std::cout << "nullptr";
       }
       std::cout << std::endl;
-
-      //   // Print value for the node before endNode_
-      //   auto it = endNode_;
-      //   --it;  // Assuming valid iterator implementation
-      //   std::cout << "--endNode value: ";
-      //   printNodeValue(it->value_);
-      //   std::cout << std::endl;
     }
     return;
   }
 
   printTree(node->right_, level + 1);
-  // Indent based on tree level
   for (int i = 0; i < level; ++i) std::cout << "  ";
-
-  // Print current node's value
   printNodeValue(node->value_);
   std::cout << " (" << (node->color_ == Color::RED ? "R" : "B") << ")"
             << std::endl;
-
-  // Recursively print left and right children
   printTree(node->left_, level + 1);
 }
 
@@ -1658,19 +1083,16 @@ void RBTree<T, Comparator>::fixInsert(Node* node) {
     if (parent == grandparent->left_) {
       Node* uncle = grandparent->right_;
       if (uncle != endNode_ && uncle != nullptr && uncle->isRed()) {
-        // Case 1: Recolor
         parent->color_ = Color::BLACK;
         uncle->color_ = Color::BLACK;
         grandparent->color_ = Color::RED;
         node = grandparent;
       } else {
         if (node == parent->right_) {
-          // Case 2: Left rotate
           leftRotate(parent);
           node = parent;
           parent = node->parent_;
         }
-        // Case 3: Right rotate
         rightRotate(grandparent);
         std::swap(parent->color_, grandparent->color_);
         break;
@@ -1678,19 +1100,16 @@ void RBTree<T, Comparator>::fixInsert(Node* node) {
     } else {
       Node* uncle = grandparent->left_;
       if (uncle != endNode_ && uncle != nullptr && uncle->isRed()) {
-        // Case 1: Recolor
         parent->color_ = Color::BLACK;
         uncle->color_ = Color::BLACK;
         grandparent->color_ = Color::RED;
         node = grandparent;
       } else {
         if (node == parent->left_) {
-          // Case 2: Right rotate
           rightRotate(parent);
           node = parent;
           parent = node->parent_;
         }
-        // Case 3: Left rotate
         leftRotate(grandparent);
         std::swap(parent->color_, grandparent->color_);
         break;

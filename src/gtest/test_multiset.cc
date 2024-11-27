@@ -24,6 +24,74 @@ TEST_F(MultisetTest, CustomComparatorConstructor) {
   EXPECT_EQ(custom_comp_multiset.size(), 0);
 }
 
+// Test default Multiset initialization with initializer list
+TEST_F(MultisetTest, InitializeWithInitializerList) {
+  Multiset<int> ms = {1, 2, 2, 3, 3, 3};
+  EXPECT_EQ(ms.size(), 6);
+  EXPECT_EQ(ms.count(1), 1);
+  EXPECT_EQ(ms.count(2), 2);
+  EXPECT_EQ(ms.count(3), 3);
+}
+
+// Test Multiset with custom comparator using initializer list
+TEST_F(MultisetTest, InitializeWithInitializerListAndCustomComparator) {
+  Multiset<int, std::greater<int>> ms({3, 3, 2, 2, 1, 1}, std::greater<int>());
+  EXPECT_EQ(ms.size(), 6);
+
+  auto it = ms.begin();
+  EXPECT_EQ(*it, 3);
+  ++it;
+  EXPECT_EQ(*it, 3);
+  ++it;
+  EXPECT_EQ(*it, 2);
+  ++it;
+  EXPECT_EQ(*it, 2);
+  ++it;
+  EXPECT_EQ(*it, 1);
+  ++it;
+  EXPECT_EQ(*it, 1);
+}
+
+// Test inserting elements into Multiset
+TEST_F(MultisetTest, InsertionTest) {
+  default_multiset.insert(10);
+  default_multiset.insert(20);
+  default_multiset.insert(10);  // Duplicate, should be inserted
+
+  EXPECT_EQ(default_multiset.size(), 3);
+  EXPECT_EQ(default_multiset.count(10), 2);
+  EXPECT_EQ(default_multiset.count(20), 1);
+}
+
+// Test erasing elements from Multiset
+TEST_F(MultisetTest, EraseTest) {
+  Multiset<int> ms = {1, 2, 2, 3, 3, 3};
+  ms.erase(2);
+  EXPECT_EQ(ms.size(), 5);
+  EXPECT_EQ(ms.count(2), 1);  // Only one instance of '2' should remain
+  ms.erase(2);
+  EXPECT_EQ(ms.count(2), 0);  // '2' should be completely removed
+}
+
+// Test copying a Multiset
+TEST_F(MultisetTest, CopyConstructorTest) {
+  Multiset<int> original = {1, 2, 2, 3};
+  Multiset<int> copy(original);
+
+  EXPECT_EQ(copy.size(), 4);
+  EXPECT_EQ(copy.count(2), 2);
+}
+
+// Test moving a Multiset
+TEST_F(MultisetTest, MoveConstructorTest) {
+  Multiset<int> original = {1, 2, 2, 3};
+  Multiset<int> moved(std::move(original));
+
+  EXPECT_EQ(moved.size(), 4);
+  EXPECT_EQ(moved.count(2), 2);
+  EXPECT_EQ(original.size(), 0);  // Original should be empty
+}
+
 // Test insert single element
 TEST_F(MultisetTest, InsertSingleElement) {
   auto it = default_multiset.insert(10);
@@ -56,6 +124,109 @@ TEST_F(MultisetTest, CustomComparatorInsert) {
   EXPECT_EQ(*it, 5);
   ++it;
   EXPECT_EQ(*it, 1);
+}
+// Test merging a non-empty multiset into an empty multiset
+TEST_F(MultisetTest, MergeNonEmptyIntoEmpty) {
+  Multiset<int> source = {1, 2, 2, 3};
+  Multiset<int> destination;
+  destination.merge(source);
+
+  // Verify destination has all elements from source
+  EXPECT_EQ(destination.size(), 4);
+  EXPECT_EQ(destination.count(1), 1);
+  EXPECT_EQ(destination.count(2), 2);
+  EXPECT_EQ(destination.count(3), 1);
+
+  // Verify source is empty after merge
+  EXPECT_EQ(source.size(), 0);
+}
+
+// Test merging an empty multiset into a non-empty multiset
+TEST_F(MultisetTest, MergeEmptyIntoNonEmpty) {
+  Multiset<int> source;
+  Multiset<int> destination = {4, 5, 5, 6};
+  destination.merge(source);
+
+  // Verify destination remains unchanged
+  EXPECT_EQ(destination.size(), 4);
+  EXPECT_EQ(destination.count(4), 1);
+  EXPECT_EQ(destination.count(5), 2);
+  EXPECT_EQ(destination.count(6), 1);
+
+  // Verify source is still empty
+  EXPECT_EQ(source.size(), 0);
+}
+
+// Test merging two non-empty multisets
+TEST_F(MultisetTest, MergeNonEmptyIntoNonEmpty) {
+  Multiset<int> source = {1, 2, 2, 3};
+  Multiset<int> destination = {2, 3, 3, 4};
+
+  destination.merge(source);
+
+  // Verify destination has combined elements
+  EXPECT_EQ(destination.size(), 8);
+  EXPECT_EQ(destination.count(1), 1);
+  EXPECT_EQ(destination.count(2), 3);  // 2 from source, 1 from destination
+  EXPECT_EQ(destination.count(3), 3);  // 1 from source, 2 from destination
+  EXPECT_EQ(destination.count(4), 1);
+
+  // Verify source is empty after merge
+  EXPECT_EQ(source.size(), 0);
+}
+
+// Test self-merge (should have no effect)
+TEST_F(MultisetTest, MergeSelf) {
+  Multiset<int> ms = {1, 2, 3};
+  ms.merge(ms);  // Should do nothing
+
+  // Verify multiset remains unchanged
+  EXPECT_EQ(ms.size(), 3);
+  EXPECT_EQ(ms.count(1), 1);
+  EXPECT_EQ(ms.count(2), 1);
+  EXPECT_EQ(ms.count(3), 1);
+}
+
+// Test merging multisets with custom comparators
+TEST_F(MultisetTest, MergeWithCustomComparator) {
+  Multiset<int, std::greater<int>> source(((std::greater<int>())));
+  source.insert(5);
+  source.insert(4);
+  source.insert(4);
+
+  Multiset<int, std::greater<int>> destination(((std::greater<int>())));
+  destination.insert(3);
+  destination.insert(2);
+  destination.merge(source);
+
+  // Verify destination has combined elements
+  EXPECT_EQ(destination.size(), 5);
+  EXPECT_EQ(destination.count(5), 1);
+  EXPECT_EQ(destination.count(4), 2);
+  EXPECT_EQ(destination.count(3), 1);
+  EXPECT_EQ(destination.count(2), 1);
+
+  // Verify source is empty after merge
+  EXPECT_EQ(source.size(), 0);
+
+  // Verify the order according to the custom comparator
+  auto it = destination.begin();
+  EXPECT_EQ(*it++, 5);
+  EXPECT_EQ(*it++, 4);
+  EXPECT_EQ(*it++, 4);
+  EXPECT_EQ(*it++, 3);
+  EXPECT_EQ(*it++, 2);
+}
+
+// Test merging two empty multisets
+TEST_F(MultisetTest, MergeEmptyIntoEmpty) {
+  Multiset<int> source;
+  Multiset<int> destination;
+  destination.merge(source);
+
+  // Both multisets should remain empty
+  EXPECT_EQ(destination.size(), 0);
+  EXPECT_EQ(source.size(), 0);
 }
 
 // Test empty() method

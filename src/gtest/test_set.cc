@@ -108,6 +108,73 @@ TEST_F(SetTest, InsertMany3) {
   EXPECT_EQ(default_set.size(), 22);
 }
 
+// Test default Set initialization with initializer list
+TEST_F(SetTest, InitializeWithInitializerList) {
+  Set<int> s = {1, 2, 3, 4, 5};
+  EXPECT_EQ(s.size(), 5);
+  EXPECT_TRUE(s.find(3) != s.end());
+  EXPECT_FALSE(s.find(6) != s.end());
+}
+
+// Test Set with custom comparator using initializer list
+TEST_F(SetTest, InitializeWithInitializerListAndCustomComparator) {
+  Set<int, std::greater<int>> s({5, 4, 3, 2, 1}, std::greater<int>());
+  EXPECT_EQ(s.size(), 5);
+
+  auto it = s.begin();
+  EXPECT_EQ(*it, 5);
+  ++it;
+  EXPECT_EQ(*it, 4);
+  ++it;
+  EXPECT_EQ(*it, 3);
+  ++it;
+  EXPECT_EQ(*it, 2);
+  ++it;
+  EXPECT_EQ(*it, 1);
+}
+
+// Test inserting elements into Set
+TEST_F(SetTest, InsertionTest) {
+  default_set.insert(10);
+  default_set.insert(20);
+  default_set.insert(10);  // Duplicate, should not be inserted
+
+  EXPECT_EQ(default_set.size(), 2);
+  EXPECT_TRUE(default_set.find(10) != default_set.end());
+  EXPECT_TRUE(default_set.find(20) != default_set.end());
+}
+
+// Test erasing elements from Set
+TEST_F(SetTest, EraseTest) {
+  Set<int> s = {1, 2, 3, 4, 5};
+  s.erase(3);
+  EXPECT_EQ(s.size(), 4);
+  EXPECT_FALSE(s.find(3) != s.end());
+}
+
+// Test copying a Set
+TEST_F(SetTest, CopyConstructorTest) {
+  Set<int> original = {1, 2, 3};
+  Set<int> copy(original);
+
+  EXPECT_EQ(copy.size(), 3);
+  EXPECT_TRUE(copy.find(1) != copy.end());
+  EXPECT_TRUE(copy.find(2) != copy.end());
+  EXPECT_TRUE(copy.find(3) != copy.end());
+}
+
+// Test moving a Set
+TEST_F(SetTest, MoveConstructorTest) {
+  Set<int> original = {1, 2, 3};
+  Set<int> moved(std::move(original));
+
+  EXPECT_EQ(moved.size(), 3);
+  EXPECT_TRUE(moved.find(1) != moved.end());
+  EXPECT_TRUE(moved.find(2) != moved.end());
+  EXPECT_TRUE(moved.find(3) != moved.end());
+  EXPECT_EQ(original.size(), 0);  // Original should be empty
+}
+
 // Test erase method
 TEST_F(SetTest, Erase) {
   default_set.insert(10);

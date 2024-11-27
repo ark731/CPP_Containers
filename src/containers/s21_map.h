@@ -34,7 +34,6 @@ class Map {
   using const_iterator = ConstIterator<value_type>;
   using Node = RBTreeNode<value_type>;
 
-  // Constructors and Destructor
   Map() : comp_(), tree_(value_compare(comp_)) {}
   explicit Map(const key_compare& comp)
       : comp_(comp), tree_(value_compare(comp)) {}
@@ -57,8 +56,7 @@ class Map {
     }
   }
 
-  Map& operator=(
-      Map other) noexcept {  // Copy-and-swap idiom for exception safety
+  Map& operator=(Map other) noexcept {
     swap(other);
     return *this;
   }
@@ -86,31 +84,24 @@ class Map {
   std::vector<std::pair<iterator, bool>> insert_many(Args&&... args) {
     static_assert((std::is_constructible_v<value_type, Args&&> && ...),
                   "All arguments must be constructible to value_type");
-
     std::vector<std::pair<iterator, bool>> result;
-    result.reserve(sizeof...(args));  // Reserve space for efficiency
-
-    // Track successful insertions to rollback in case of failure
+    result.reserve(sizeof...(args));
     std::vector<iterator> inserted_iterators;
-
     try {
-      // Iterate over each argument and insert
       (
           [&] {
             auto [it, inserted] = insert(std::forward<Args>(args));
             result.push_back({it, inserted});
             if (inserted) {
-              inserted_iterators.push_back(it);  // Track successful insertions
+              inserted_iterators.push_back(it);
             }
           }(),
           ...);
-
     } catch (...) {
-      // Rollback all successful insertions to maintain consistency
       for (auto it : inserted_iterators) {
-        erase(it);  // Assuming erase handles rolling back the inserted node.
+        erase(it);
       }
-      throw;  // Re-throw the exception to propagate
+      throw;
     }
 
     return result;
@@ -119,7 +110,7 @@ class Map {
   void erase(iterator pos) { tree_.erase(pos); }
   size_type erase(const key_type& key) {
     auto it = find(key);
-    if (it != end()) {  // Ensure we're not at end before erasing
+    if (it != end()) {
       tree_.erase(it);
       return 1;
     }
@@ -131,7 +122,6 @@ class Map {
     tree_.swap(other.tree_);
   }
 
-  // Element Access
   T& at(const key_type& key) {
     auto it = find(key);
     if (it == end()) throw std::out_of_range("Key not found");
@@ -149,7 +139,6 @@ class Map {
     return insert(std::make_pair(std::move(key), T())).first->second;
   }
 
-  // Lookup
   iterator find(const key_type& key) {
     auto it = tree_.find(value_type(key, T()));
     return it != tree_.end() ? it : end();
@@ -181,7 +170,6 @@ class Map {
     return {lower_bound(key), upper_bound(key)};
   }
 
-  // Observers
   key_compare key_comp() const { return comp_; }
   value_compare value_comp() const { return value_compare(comp_); }
   void printTree() const { tree_.printTree(); }
